@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb"
 import { Propuesta } from "../models/propuesta.js"
+import { Proyecto } from "../models/proyecto.js"
 
 export class ServicioPropuesta {
   constructor(db) {
@@ -65,6 +66,95 @@ export class ServicioPropuesta {
       throw new Error(`Propuesta con ID ${propuestaId} no encontrada`)
     }
     return propuesta
+  }
+
+  // Cambiar estado de propuesta con transacciones
+  async cambiarEstadoPropuesta(propuestaId, nuevoEstado) {
+    const session = this.db.client.startSession()
+
+    try {
+      await session.withTransaction(async () => {
+        // Buscar la propuesta
+        const propuestaDB = await this.db
+          .collection("propuestas")
+          .findOne({ _id: new ObjectId(propuestaId) }, { session })
+
+        if (!propuestaDB) {
+          throw new Error(`Propuesta con ID ${propuestaId} no encontrada`)
+        }
+
+        // Crear instancia del modelo para validaciones
+        const propuesta = Propuesta.fromDBObject(propuestaDB)
+
+        // Validar que se puede cambiar el estado
+        if (!propuesta.puedeSerModificada()) {
+          throw new Error(
+            `No se puede cambiar el estado de una propuesta "${propuesta.estado}". Solo las propuestas "Pendiente" pueden modificarse.`,
+          )
+        }
+
+        // Cambiar estado (esto incluye las validaciones)
+        propuesta.cambiarEstado(nuevoEstado)
+
+        // Actualizar propuesta en la base de datos
+        await this.db
+          .collection("propuestas")
+          .updateOne({ _id: new ObjectId(propuestaId) }, { $set: propuesta.toDBObject() }, { session })
+
+        // Si se acepta la propuesta, crear proyecto automáticamente
+        if (nuevoEstado === "Aceptada") {
+          const proyecto = Proyecto.crearDesdePropuesta(propuestaDB, propuestaDB.clienteId)
+
+          // Insertar el proyecto
+          const resultadoProyecto = await this.db.collection("proyectos").insertOne(proyecto.toDBObject(), { session })
+
+          // Actualizar la propuesta con el ID del proyecto creado
+          await this.db
+            .collection("propuestas")
+            .updateOne(
+              { _id: new ObjectId(propuestaId) },
+              { $set: { proyectoGeneradoId: resultadoProyecto.insertedId } },
+              { session },
+            )
+
+          return {
+            propuesta: propuesta.toDBObject(),
+            proyectoCreado: {
+              _id: resultadoProyecto.insertedId,
+              ...proyecto.toDBObject(),
+            },
+          }
+        }
+
+        return {
+          propuesta: propuesta.toDBObject(),
+          proyectoCreado: null,
+        }
+      })
+
+      // Obtener la propuesta actualizada con información del cliente
+      const propuestaActualizada = await this.db
+        .collection("propuestas")
+        .aggregate([
+          { $match: { _id: new ObjectId(propuestaId) } },
+          {
+            $lookup: {
+              from: "clientes",
+              localField: "clienteId",
+              foreignField: "_id",
+              as: "cliente",
+            },
+          },
+          { $unwind: "$cliente" },
+        ])
+        .toArray()
+
+      return propuestaActualizada[0]
+    } catch (error) {
+      throw error
+    } finally {
+      await session.endSession()
+    }
   }
 
   // Listar propuestas con información de cliente
@@ -145,6 +235,28 @@ export class ServicioPropuesta {
         tieneAnterior,
       },
     }
+  }
+
+  // Listar propuestas pendientes (para cambio de estado)
+  async listarPropuestasPendientes() {
+    const propuestas = await this.db
+      .collection("propuestas")
+      .aggregate([
+        { $match: { estado: "Pendiente" } },
+        {
+          $lookup: {
+            from: "clientes",
+            localField: "clienteId",
+            foreignField: "_id",
+            as: "cliente",
+          },
+        },
+        { $unwind: "$cliente" },
+        { $sort: { fechaCreacion: -1 } },
+      ])
+      .toArray()
+
+    return propuestas
   }
 
   // Obtener estadísticas de propuestas
