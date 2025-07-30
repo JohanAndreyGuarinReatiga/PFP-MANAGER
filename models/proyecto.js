@@ -1,88 +1,122 @@
-class Proyecto {
-    constructor(data = {}) {
-      this.id = data.id || this.generateId();
-      this.clienteId = data.clienteId || '';
-      this.nombre = data.nombre || '';
-      this.descripcion = data.descripcion || '';
-      this.fechaInicio = data.fechaInicio || new Date();
-      this.fechaFin = data.fechaFin || null;
-      this.valor = data.valor || 0;
-      this.estado = data.estado || 'activo';
-      this.progreso = data.progreso || 0;
-      this.fechaCreacion = data.fechaCreacion || new Date();
-      this.fechaActualizacion = data.fechaActualizacion || new Date();
+import { ObjectId } from "mongodb"
+
+export class Proyecto {
+  constructor({
+    clienteId,
+    propuestaId = null,
+    contratoId = null,
+    nombre,
+    descripcion = "",
+    fechaInicio = new Date(),
+    fechaFin = null,
+    valor = 0,
+    estado = "activo",
+    codigoProyecto = null,
+    avances = [],
+  }) {
+    if (!clienteId || !ObjectId.isValid(clienteId)) {
+      throw new Error("El clienteId es obligatorio y debe ser un ObjectId válido.")
     }
-  
-    generateId() {
-      return "PRJ_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    if (!nombre || typeof nombre !== "string" || nombre.trim().length === 0) {
+      throw new Error("El nombre del proyecto es obligatorio y debe ser una cadena no vacía.")
     }
-  
-    validate() {
-      const errors = [];
-  
-      if (!this.nombre || this.nombre.trim().length === 0) {
-        errors.push('El nombre del proyecto es obligatorio');
-      }
-      if (!this.clienteId || this.clienteId.trim().length === 0) {
-        errors.push('El ID del cliente es obligatorio');
-      }
-      if (this.valor < 0) {
-        errors.push('El valor del proyecto no puede ser negativo');
-      }
-      if (this.fechaFin && this.fechaFin < this.fechaInicio) {
-        errors.push('La fecha de fin no puede ser anterior a la fecha de inicio');
-      }
-      const estadosValidos = ['activo', 'pausado', 'finalizado', 'cancelado'];
-      if (!estadosValidos.includes(this.estado)) {
-        errors.push('Estado de proyecto inválido. Estados válidos: ' + estadosValidos.join(', '));
-      }
-      if (this.progreso < 0 || this.progreso > 100) {
-        errors.push('El progreso debe estar entre 0 y 100');
-      }
-      return errors;
+    if (typeof descripcion !== "string") {
+      throw new Error("La descripción debe ser una cadena.")
     }
-  
-    toJSON() {
-      return {
-        id: this.id,
-        clienteId: this.clienteId,
-        nombre: this.nombre,
-        descripcion: this.descripcion,
-        fechaInicio: this.fechaInicio,
-        fechaFin: this.fechaFin,
-        valor: this.valor,
-        estado: this.estado,
-        progreso: this.progreso,
-        fechaCreacion: this.fechaCreacion,
-        fechaActualizacion: this.fechaActualizacion
-      };
+    if (!(fechaInicio instanceof Date) || isNaN(fechaInicio.getTime())) {
+      throw new Error("La fecha de inicio debe ser una fecha válida.")
     }
-  
-    static fromJSON(data) {
-      return new Proyecto(data);
+    if (fechaFin && (!(fechaFin instanceof Date) || isNaN(fechaFin.getTime()))) {
+      throw new Error("La fecha de fin debe ser una fecha válida o null.")
     }
- 
-    getDuracionDias() {
-      if (!this.fechaFin) return null;
-      const diffTime = Math.abs(this.fechaFin - this.fechaInicio);
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (fechaFin && fechaFin <= fechaInicio) {
+      throw new Error("La fecha de fin debe ser posterior a la fecha de inicio.")
     }
-  
-    getEstadoColor() {
-      const colores = {
-        'activo': 'green',
-        'pausado': 'yellow',
-        'finalizado': 'blue',
-        'cancelado': 'red'
-      };
-      return colores[this.estado] || 'white';
+    if (typeof valor !== "number" || valor < 0) {
+      throw new Error("El valor debe ser un número mayor o igual a 0.")
     }
-  
-    isVencido() {
-      if (!this.fechaFin) return false;
-      return new Date() > this.fechaFin && this.estado === 'activo';
+
+    const estadosValidos = ["activo", "pausado", "finalizado", "cancelado"]
+    if (!estadosValidos.includes(estado)) {
+      throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
+    }
+    if (propuestaId && !ObjectId.isValid(propuestaId)) {
+      throw new Error("El propuestaId debe ser un ObjectId válido o null.")
+    }
+    if (contratoId && !ObjectId.isValid(contratoId)) {
+      throw new Error("El contratoId debe ser un ObjectId válido o null.")
+    }
+
+    this._id = new ObjectId()
+    this.clienteId = new ObjectId(clienteId)
+    this.propuestaId = propuestaId ? new ObjectId(propuestaId) : null
+    this.contratoId = contratoId ? new ObjectId(contratoId) : null
+    this.nombre = nombre.trim()
+    this.descripcion = descripcion.trim()
+    this.fechaInicio = fechaInicio
+    this.fechaFin = fechaFin
+    this.valor = valor
+    this.estado = estado
+    this.codigoProyecto = codigoProyecto || this.#generarCodigoProyecto()
+    this.avances = Array.isArray(avances) ? avances : []
+    this.fechaCreacion = new Date()
+  }
+
+  #generarCodigoProyecto() {
+    const timestamp = Date.now().toString().slice(-6)
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase()
+    return `PROJ-${timestamp}-${random}`
+  }
+
+  agregarAvance(descripcion) {
+    if (!descripcion || typeof descripcion !== "string") {
+      throw new Error("La descripción del avance es obligatoria.")
+    }
+    this.avances.push({
+      fecha: new Date(),
+      descripcion: descripcion.trim(),
+    })
+  }
+
+  cambiarEstado(nuevoEstado) {
+    const estadosValidos = ["activo", "pausado", "finalizado", "cancelado"]
+    if (!estadosValidos.includes(nuevoEstado)) {
+      throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
+    }
+    this.estado = nuevoEstado
+  }
+
+  toDBObject() {
+    return {
+      _id: this._id,
+      clienteId: this.clienteId,
+      propuestaId: this.propuestaId,
+      contratoId: this.contratoId,
+      nombre: this.nombre,
+      descripcion: this.descripcion,
+      fechaInicio: this.fechaInicio,
+      fechaFin: this.fechaFin,
+      valor: this.valor,
+      estado: this.estado,
+      codigoProyecto: this.codigoProyecto,
+      avances: this.avances,
+      fechaCreacion: this.fechaCreacion,
     }
   }
-  
-  module.exports = Proyecto;
-  
+
+  static fromDBObject(obj) {
+    return new Proyecto({
+      clienteId: obj.clienteId,
+      propuestaId: obj.propuestaId,
+      contratoId: obj.contratoId,
+      nombre: obj.nombre,
+      descripcion: obj.descripcion,
+      fechaInicio: obj.fechaInicio,
+      fechaFin: obj.fechaFin,
+      valor: obj.valor,
+      estado: obj.estado,
+      codigoProyecto: obj.codigoProyecto,
+      avances: obj.avances || [],
+    })
+  }
+}
