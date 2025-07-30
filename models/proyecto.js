@@ -10,7 +10,7 @@ export class Proyecto {
     fechaInicio = new Date(),
     fechaFin = null,
     valor = 0,
-    estado = "activo",
+    estado = "Activo",
     codigoProyecto = null,
     avances = [],
   }) {
@@ -36,7 +36,7 @@ export class Proyecto {
       throw new Error("El valor debe ser un número mayor o igual a 0.")
     }
 
-    const estadosValidos = ["activo", "pausado", "finalizado", "cancelado"]
+    const estadosValidos = ["Activo", "Pausado", "Finalizado", "Cancelado"]
     if (!estadosValidos.includes(estado)) {
       throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
     }
@@ -63,9 +63,19 @@ export class Proyecto {
   }
 
   #generarCodigoProyecto() {
-    const timestamp = Date.now().toString().slice(-6)
-    const random = Math.random().toString(36).substring(2, 5).toUpperCase()
+    const timestamp = Date.now().toString()
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase()
     return `PROJ-${timestamp}-${random}`
+  }
+
+  getEstadoConColor() {
+    const colores = {
+      Activo: "green",
+      Pausado: "yellow",
+      Finalizado: "blue",
+      Cancelado: "red",
+    }
+    return { estado: this.estado, color: colores[this.estado] || "white" }
   }
 
   agregarAvance(descripcion) {
@@ -79,11 +89,23 @@ export class Proyecto {
   }
 
   cambiarEstado(nuevoEstado) {
-    const estadosValidos = ["activo", "pausado", "finalizado", "cancelado"]
+    const estadosValidos = ["Activo", "Pausado", "Finalizado", "Cancelado"]
     if (!estadosValidos.includes(nuevoEstado)) {
       throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
     }
     this.estado = nuevoEstado
+  }
+
+  static crearDesdePropuesta(propuestaData, clienteId) {
+    return new Proyecto({
+      clienteId,
+      propuestaId: propuestaData._id,
+      nombre: propuestaData.nombre || `Proyecto - ${propuestaData.descripcion.substring(0, 30)}`,
+      descripcion: propuestaData.descripcion,
+      valor: propuestaData.precio,
+      fechaInicio: new Date(),
+      fechaFin: propuestaData.plazoDias ? new Date(Date.now() + propuestaData.plazoDias * 24 * 60 * 60 * 1000) : null,
+    })
   }
 
   toDBObject() {
@@ -105,7 +127,7 @@ export class Proyecto {
   }
 
   static fromDBObject(obj) {
-    return new Proyecto({
+    const proyecto = new Proyecto({
       clienteId: obj.clienteId,
       propuestaId: obj.propuestaId,
       contratoId: obj.contratoId,
@@ -118,5 +140,8 @@ export class Proyecto {
       codigoProyecto: obj.codigoProyecto,
       avances: obj.avances || [],
     })
+    proyecto._id = obj._id
+    proyecto.fechaCreacion = obj.fechaCreacion
+    return proyecto
   }
 }
