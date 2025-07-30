@@ -1,10 +1,14 @@
-import {MongoClient} from 'mongodb';
+import dotenv from 'dotenv';
+import { MongoClient } from 'mongodb';
 
-const uri = "mongodb://localhost:27017/";
-const nombreDB = "PFP-MANAGER";
+dotenv.config();
+
+const uri = process.env.MONGO_URI;
+const nombreDB = process.env.DB_NAME;
+
 const cliente = new MongoClient(uri);
 
 export async function connection() {
-    await cliente.connect();
-    return cliente.db(nombreDB);
+  await cliente.connect();
+  return cliente.db(nombreDB);
 }
