@@ -114,6 +114,10 @@ async function initDB() {
         validator: schema
       });
       console.log(`Colección '${nombreColeccion}' creada con schema.`);
+    if (nombreColeccion === "clientes") {
+      await db.collection("clientes").createIndex({ correo: 1 }, { unique: true });
+      console.log("Índice único en 'correo' creado.");
+    }
     } else {
       console.log(`Colección '${nombreColeccion}' ya existe.`);
     }
