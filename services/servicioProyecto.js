@@ -136,4 +136,206 @@ export class ServicioProyecto {
 
     return proyectos
   }
+
+  // Calcular progreso del proyecto
+  calcularProgreso(proyecto) {
+    let progreso = 0
+    let factores = 0
+
+    // Factor 1: Progreso temporal (40% del peso)
+    if (proyecto.fechaInicio && proyecto.fechaFin) {
+      const ahora = new Date()
+      const inicio = new Date(proyecto.fechaInicio)
+      const fin = new Date(proyecto.fechaFin)
+
+      if (ahora >= inicio) {
+        const tiempoTotal = fin.getTime() - inicio.getTime()
+        const tiempoTranscurrido = Math.min(ahora.getTime() - inicio.getTime(), tiempoTotal)
+        const progresoTemporal = (tiempoTranscurrido / tiempoTotal) * 100
+        progreso += progresoTemporal * 0.4
+        factores += 0.4
+      }
+    }
+
+    // Factor 2: Avances registrados (60% del peso)
+    if (proyecto.avances && proyecto.avances.length > 0) {
+      // Asumimos que cada avance representa progreso
+      // Máximo 10 avances = 100% de este factor
+      const progresoAvances = Math.min((proyecto.avances.length / 10) * 100, 100)
+      progreso += progresoAvances * 0.6
+      factores += 0.6
+    }
+
+    // Si el proyecto está finalizado, progreso = 100%
+    if (proyecto.estado === "Finalizado") {
+      return 100
+    }
+
+    // Si el proyecto está cancelado, mantener el progreso actual
+    if (proyecto.estado === "Cancelado") {
+      return Math.round(progreso / (factores || 1))
+    }
+
+    // Normalizar el progreso basado en los factores disponibles
+    return factores > 0 ? Math.round(progreso / factores) : 0
+  }
+
+  // Listar proyectos con filtros y ordenamiento
+  async listarProyectosCompleto(opciones = {}) {
+    const {
+      filtroEstado = null,
+      filtroCliente = null,
+      ordenarPor = "fechaInicio",
+      orden = -1, // -1 para descendente, 1 para ascendente
+      pagina = 1,
+      limite = 10,
+    } = opciones
+
+    // Construir filtros
+    const filtros = {}
+
+    if (filtroEstado && filtroEstado !== "todos") {
+      filtros.estado = filtroEstado
+    }
+
+    if (filtroCliente && filtroCliente !== "todos") {
+      filtros.clienteId = new ObjectId(filtroCliente)
+    }
+
+    // Pipeline de agregación
+    const pipeline = []
+
+    // Aplicar filtros
+    if (Object.keys(filtros).length > 0) {
+      pipeline.push({ $match: filtros })
+    }
+
+    // Hacer lookup con clientes
+    pipeline.push({
+      $lookup: {
+        from: "clientes",
+        localField: "clienteId",
+        foreignField: "_id",
+        as: "cliente",
+      },
+    })
+
+    pipeline.push({
+      $unwind: "$cliente",
+    })
+
+    // Hacer lookup con contratos (opcional)
+    pipeline.push({
+      $lookup: {
+        from: "contratos",
+        localField: "contratoId",
+        foreignField: "_id",
+        as: "contrato",
+      },
+    })
+
+    // Ordenar
+    const sortObj = {}
+    sortObj[ordenarPor] = orden
+    pipeline.push({ $sort: sortObj })
+
+    // Contar total de documentos (antes de paginación)
+    const countPipeline = [...pipeline, { $count: "total" }]
+    const countResult = await this.db.collection("proyectos").aggregate(countPipeline).toArray()
+    const total = countResult.length > 0 ? countResult[0].total : 0
+
+    // Aplicar paginación
+    const skip = (pagina - 1) * limite
+    pipeline.push({ $skip: skip })
+    pipeline.push({ $limit: limite })
+
+    // Ejecutar consulta
+    const proyectos = await this.db.collection("proyectos").aggregate(pipeline).toArray()
+
+    // Calcular progreso para cada proyecto
+    const proyectosConProgreso = proyectos.map((proyecto) => ({
+      ...proyecto,
+      progreso: this.calcularProgreso(proyecto),
+    }))
+
+    // Calcular información de paginación
+    const totalPaginas = Math.ceil(total / limite)
+    const tieneSiguiente = pagina < totalPaginas
+    const tieneAnterior = pagina > 1
+
+    return {
+      proyectos: proyectosConProgreso,
+      paginacion: {
+        paginaActual: pagina,
+        totalPaginas,
+        total,
+        limite,
+        tieneSiguiente,
+        tieneAnterior,
+      },
+    }
+  }
+
+  // Obtener estadísticas de proyectos
+  async obtenerEstadisticasProyectos() {
+    const estadisticas = await this.db
+      .collection("proyectos")
+      .aggregate([
+        {
+          $group: {
+            _id: "$estado",
+            count: { $sum: 1 },
+            totalValor: { $sum: "$valor" },
+          },
+        },
+      ])
+      .toArray()
+
+    const resultado = {
+      Activo: { count: 0, totalValor: 0 },
+      Pausado: { count: 0, totalValor: 0 },
+      Finalizado: { count: 0, totalValor: 0 },
+      Cancelado: { count: 0, totalValor: 0 },
+    }
+
+    estadisticas.forEach((stat) => {
+      if (resultado[stat._id]) {
+        resultado[stat._id] = {
+          count: stat.count,
+          totalValor: stat.totalValor,
+        }
+      }
+    })
+
+    return resultado
+  }
+
+  // Listar clientes para filtros
+  async listarClientesConProyectos() {
+    const clientes = await this.db
+      .collection("proyectos")
+      .aggregate([
+        {
+          $lookup: {
+            from: "clientes",
+            localField: "clienteId",
+            foreignField: "_id",
+            as: "cliente",
+          },
+        },
+        { $unwind: "$cliente" },
+        {
+          $group: {
+            _id: "$cliente._id",
+            nombre: { $first: "$cliente.nombre" },
+            empresa: { $first: "$cliente.empresa" },
+            totalProyectos: { $sum: 1 },
+          },
+        },
+        { $sort: { nombre: 1 } },
+      ])
+      .toArray()
+
+    return clientes
+  }
 }
