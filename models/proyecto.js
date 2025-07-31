@@ -125,23 +125,4 @@ export class Proyecto {
       fechaCreacion: this.fechaCreacion,
     }
   }
-
-  static fromDBObject(obj) {
-    const proyecto = new Proyecto({
-      clienteId: obj.clienteId,
-      propuestaId: obj.propuestaId,
-      contratoId: obj.contratoId,
-      nombre: obj.nombre,
-      descripcion: obj.descripcion,
-      fechaInicio: obj.fechaInicio,
-      fechaFin: obj.fechaFin,
-      valor: obj.valor,
-      estado: obj.estado,
-      codigoProyecto: obj.codigoProyecto,
-      avances: obj.avances || [],
-    })
-    proyecto._id = obj._id
-    proyecto.fechaCreacion = obj.fechaCreacion
-    return proyecto
-  }
 }
