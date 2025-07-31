@@ -47,7 +47,7 @@ export class ServicioProyecto {
   // Crear proyecto desde propuesta aceptada
   async crearProyectoPorPropuesta(propuestaId, clienteId) {
     // Validar que el cliente existe
-    await this.validarClienteExiste(clienteId)
+    const cliente = await this.validarClienteExiste(clienteId)
 
     // Buscar la propuesta
     const propuesta = await this.db.collection("propuestas").findOne({
@@ -58,12 +58,22 @@ export class ServicioProyecto {
     }
 
     // Verificar que la propuesta esté aceptada
-    if (propuesta.estado !== "aceptada") {
+    if (propuesta.estado !== "Aceptada") {
       throw new Error("Solo se pueden crear proyectos desde propuestas aceptadas")
+    }
+
+    // Validar que la propuesta tenga un precio válido
+    if (!propuesta.precio || propuesta.precio <= 0) {
+      throw new Error("La propuesta debe tener un precio válido para generar un proyecto")
     }
 
     // Crear proyecto heredando datos relevantes de la propuesta
     const proyecto = Proyecto.crearDesdePropuesta(propuesta, clienteId)
+
+    // Validar fechas del proyecto
+    if (!proyecto.fechaFin) {
+      proyecto.fechaFin = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Asignar 30 días por defecto
+    }
 
     const resultado = await this.db.collection("proyectos").insertOne(proyecto.toDBObject())
     return { ...proyecto.toDBObject(), _id: resultado.insertedId }

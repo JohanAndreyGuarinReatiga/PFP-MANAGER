@@ -153,25 +153,35 @@ export async function cambiarEstadoPropuesta() {
     // Cambiar estado de la propuesta
     console.log(chalk.blue("\n🔄 Procesando cambio de estado..."))
 
-    const resultado = await servicioPropuesta.cambiarEstadoPropuesta(
-      seleccion.propuestaSeleccionada,
-      cambioEstado.nuevoEstado,
-    )
+    try {
+      const resultado = await servicioPropuesta.cambiarEstadoPropuesta(
+        seleccion.propuestaSeleccionada,
+        cambioEstado.nuevoEstado,
+      );
 
-    // Mostrar resultado exitoso
-    console.log(chalk.green.bold("\n✅ ESTADO CAMBIADO CON ÉXITO\n"))
-    console.log(chalk.cyan("Propuesta:"), chalk.white.bold(resultado.numero))
-    console.log(chalk.cyan("Estado Anterior:"), mostrarEstadoConColor("Pendiente"))
-    console.log(chalk.cyan("Estado Nuevo:"), mostrarEstadoConColor(resultado.estado))
-    console.log(chalk.cyan("Fecha de Cambio:"), chalk.white(formatearFecha(resultado.fechaCambioEstado)))
+      // Mostrar resultado exitoso
+      console.log(chalk.green.bold("\n✅ ESTADO CAMBIADO CON ÉXITO\n"));
+      console.log(chalk.cyan("Propuesta:"), chalk.white.bold(resultado.propuesta.numero));
+      console.log(chalk.cyan("Estado Anterior:"), mostrarEstadoConColor("Pendiente"));
+      console.log(chalk.cyan("Estado Nuevo:"), mostrarEstadoConColor(resultado.propuesta.estado));
+      console.log(chalk.cyan("Fecha de Cambio:"), chalk.white(formatearFecha(resultado.propuesta.fechaCambioEstado)));
 
-    // Si se creó un proyecto, mostrar información
-    if (cambioEstado.nuevoEstado === "Aceptada") {
-      console.log(chalk.green.bold("\n🎉 PROYECTO CREADO AUTOMÁTICAMENTE\n"))
-      console.log(chalk.cyan("Se ha generado un nuevo proyecto basado en la propuesta aceptada."))
-      console.log(chalk.cyan("Puedes encontrarlo en la sección de proyectos."))
+      // Si se creó un proyecto, mostrar información
+      if (resultado.proyectoCreado) {
+        console.log(chalk.green.bold("\n🎉 PROYECTO CREADO AUTOMÁTICAMENTE\n"));
+        console.log(chalk.cyan("ID del Proyecto:"), chalk.white.bold(resultado.proyectoCreado._id));
+        console.log(chalk.cyan("Nombre del Proyecto:"), chalk.white(resultado.proyectoCreado.nombre));
+      }
+    } catch (error) {
+      console.log(chalk.red.bold("\n❌ ERROR AL CAMBIAR ESTADO DE PROPUESTA"));
+      console.log(chalk.red(error.message));
+
+      if (error.message.includes("No se puede cambiar el estado")) {
+        console.log(chalk.yellow("\n💡 Recuerda:"));
+        console.log(chalk.yellow("• Solo las propuestas 'Pendiente' pueden cambiar de estado"));
+        console.log(chalk.yellow("• Las propuestas 'Aceptada' o 'Rechazada' son estados finales"));
+      }
     }
-
     console.log(chalk.blue.bold("\n📊 RESUMEN:"))
     console.log(chalk.gray("─".repeat(50)))
     console.log(chalk.white(`Propuesta: ${resultado.titulo}`))
