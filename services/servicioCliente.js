@@ -98,4 +98,34 @@ export class ServicioCliente {
         }
     }
 
+       async eliminarCliente(id) {
+        await this.esperarDB();
+
+        const cliente = await this.db.collection("clientes").findOne({_id: new ObjectId(id)});
+
+        if (!cliente) {
+            return {
+                ok: false,
+                mensaje: chalk.redBright("Cliente no encontrado")
+            };
+        }
+
+        const proyectoActivo = await this.db.collection("proyectos").findOne({clienteId: new ObjectId(id), estado: "activo"});
+
+        if (proyectoActivo) {
+            return{
+                ok: false,
+                mensaje: chalk.yellowBright("No se puede eliminar el cliente porque tiene proyectos activos.")
+            }
+        }
+
+        const resultado = await this.db.collection("clientes").deleteOne({_id: new ObjectId(id)});
+
+        if (resultado.deletedCount === 0){
+            return {
+                ok: true,
+                mensaje: chalk.greenBright(`Cliente ${cliente.nombre} eliminado correctamente.`)
+            }
+        }
+    }
 }
