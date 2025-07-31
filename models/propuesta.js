@@ -99,21 +99,4 @@ export class Propuesta {
       fechaActualizacion: this.fechaActualizacion,
     }
   }
-
-  static fromDBObject(obj) {
-    const propuesta = new Propuesta({
-      clienteId: obj.clienteId,
-      titulo: obj.titulo,
-      descripcion: obj.descripcion,
-      precio: obj.precio,
-      fechaLimite: obj.fechaLimite,
-      condiciones: obj.condiciones,
-      estado: obj.estado,
-      numero: obj.numero,
-    })
-    propuesta._id = obj._id
-    propuesta.fechaCreacion = obj.fechaCreacion
-    propuesta.fechaActualizacion = obj.fechaActualizacion
-    return propuesta
-  }
 }

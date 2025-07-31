@@ -105,22 +105,4 @@ export class Contrato {
       fechaActualizacion: this.fechaActualizacion,
     }
   }
-
-  static fromDBObject(obj) {
-    const contrato = new Contrato({
-      _id: obj._id,
-      numero: obj.numero,
-      proyectoId: obj.proyectoId,
-      condiciones: obj.condiciones,
-      fechaInicio: obj.fechaInicio,
-      fechaFin: obj.fechaFin,
-      valorTotal: obj.valorTotal,
-      terminosPago: obj.terminosPago,
-      estado: obj.estado,
-      fechaFirma: obj.fechaFirma,
-      fechaCreacion: obj.fechaCreacion,
-    })
-    contrato.fechaActualizacion = obj.fechaActualizacion
-    return contrato
-  }
 }
