@@ -14,29 +14,14 @@ export class ServicioCliente {
         if (!this.db) await this.ready;
     }
 
-    async obtenerClientesPaginados(pagina = 1, limite = 10) {
-        await this.esperarDB();
+    async obtenerTodosLosClientes() {
+  await this.esperarDB();
 
-        const skip = (pagina - 1) * limite;
+  return await this.db.collection("clientes").find({}).toArray();
+}
 
-        const clientes = await this.db
-            .collection("clientes")
-            .find({})
-            .skip(skip)
-            .limit(limite)
-            .toArray();
 
-        const total = await this.db.collection("clientes").countDocuments();
-
-        return {
-            clientes,
-            total,
-            paginaActual: pagina,
-            totalPaginas: Math.ceil(total / limite)
-        };
-    }
-
-    async buscarClientes(pagina = 1, limite = 10) {
+    async buscarClientes(texto, pagina = 1, limite = 10) {
         await this.esperarDB();
 
 
@@ -50,7 +35,7 @@ export class ServicioCliente {
 
         const clientes = await this.db
             .collection("clientes")
-            .find({})
+            .find(filtro)
             .skip(skip)
             .limit(limite)
             .toArray();
@@ -71,6 +56,11 @@ export class ServicioCliente {
         return await this.db
             .collection("clientes")
             .findOne({ _id: new ObjectId(id) });
+    }
+
+     async buscarClientePorCorreo(correo) {
+        await this.esperarDB();
+        return await this.db.collection("clientes").findOne({ correo });
     }
 
     async registrarCliente(clienteData) {
@@ -110,7 +100,10 @@ export class ServicioCliente {
             };
         }
 
-        const proyectoActivo = await this.db.collection("proyectos").findOne({clienteId: new ObjectId(id), estado: "activo"});
+        const proyectoActivo = await this.db.collection("proyectos").findOne({
+            clienteId: new ObjectId(id), 
+            estado: "activo"
+        });
 
         if (proyectoActivo) {
             return{
@@ -121,10 +114,61 @@ export class ServicioCliente {
 
         const resultado = await this.db.collection("clientes").deleteOne({_id: new ObjectId(id)});
 
-        if (resultado.deletedCount === 0){
+        if (resultado.deletedCount !== 0){
             return {
                 ok: true,
                 mensaje: chalk.greenBright(`Cliente ${cliente.nombre} eliminado correctamente.`)
+            };
+        } else {
+            return {
+                ok: false,
+                mensaje:chalk.redBright("No se pudo eliminar el cliente. Intente nuevamente.")
+            }
+        }
+    }
+
+    async actualizarCliente(id, nuevosDatos){
+        await this.esperarDB();
+
+        //buscar el cliente
+        const clienteExistente = await this.db.collection("clientes").findOne({_id: new ObjectId(id)});
+
+        if(!clienteExistente) {
+            return{
+                ok: false,
+                mensaje: chalk.redBright("Cliente no encontrado.")
+            }
+        }
+
+        //si el correo no es repetido
+        if (nuevosDatos.correo) {
+            const correoRepetido = await this.db.collection("clientes").findOne({
+                correo: nuevosDatos.correo,
+                _id: {$ne: new ObjectId(id)}
+            });
+
+            if(correoRepetido) {
+                return{
+                    ok: false,
+                    mensaje: chalk.yellowBright("El correo ya está siendo usado por otro cliente.")
+                }
+            }
+        }
+
+        const resultado = await this.db.collection("clientes").updateOne(
+            {_id: new ObjectId(id)},
+            {$set: nuevosDatos}
+        );
+
+        if (resultado.modifiedCount > 0) {
+            return{
+                ok: true,
+                mensaje: chalk.greenBright(`Cliente ${clienteExistente.nombre} actualizado correctamente.`)
+            }
+        } else {
+            return{
+                ok:false,
+                mensaje: chalk.yellowBright("No se realizaron cambios.")
             }
         }
     }
