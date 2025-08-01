@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { ServicioCliente } from "../services/servicioCliente.js";
 
 export async function controladorAgregarClientes(servicio, datos) {
     const resultado = await servicio.registrarCliente(datos);
@@ -7,7 +6,7 @@ export async function controladorAgregarClientes(servicio, datos) {
 }
 
 export async function controladorListaClientes(servicio) {
-    const clientes = await servicio.obtenerTodosLosClientes();
+    const clientes = await servicio.obtenerClientes();
 
     if (!clientes || clientes.length === 0) {
         console.log(" No hay clientes registrados.");

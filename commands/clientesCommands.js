@@ -7,6 +7,7 @@ import {
     controladorEliminarCliente
 } from "../controllers/controllersCliente.js";
 import { ServicioCliente } from "../services/servicioCliente.js";
+import { seleccionarCliente } from "../utils/seleccionarCliente.js";
 
 const servicio = new ServicioCliente();
 
@@ -85,14 +86,15 @@ async function listarClientes(servicio) {
 }
 
 async function actualizarCliente() {
-    const { id } = await inquirer.prompt([
-        { name: "id", message: "Id del cliente a actualizar; " }
-    ]);
+    const clientes = await servicio.obtenerClientes();
+    const id = await seleccionarCliente(clientes, "Selecciona el cliente a actualizar");
+
+    if (!id) return;
 
     const nuevosDatos = await inquirer.prompt([
-        { type: "input", name: "nombre", message: "NUevo nombre (dejar vacío para no cambiar): " },
-        { type: "input", name: "correo", message: "Nuevo correo electronico (dejar vacío para no cambiar): " },
-        { type: "input", name: "telefono", message: "Nuevo telefono (dejar vacío para no cambiar): " },
+        { type: "input", name: "nombre", message: "Nuevo nombre (dejar vacío para no cambiar): " },
+        { type: "input", name: "correo", message: "Nuevo correo electrónico (dejar vacío para no cambiar): " },
+        { type: "input", name: "telefono", message: "Nuevo teléfono (dejar vacío para no cambiar): " },
         { type: "input", name: "empresa", message: "Nueva empresa (dejar vacío para no cambiar): " },
     ]);
 
@@ -101,11 +103,11 @@ async function actualizarCliente() {
     );
 
     if (Object.keys(datosFiltrados).length === 0) {
-        console.log(chalk.yellow("no se ingresaron cambios"));
+        console.log(chalk.yellow("No se ingresaron cambios"));
         return;
     }
 
-    await controladorActualizarClientes(servicio, id, datosFiltrados)
+    await controladorActualizarClientes(servicio, id, datosFiltrados);
 
     await inquirer.prompt([
         {
@@ -114,25 +116,25 @@ async function actualizarCliente() {
             message: chalk.gray("Presiona ENTER para volver al menú...")
         }
     ]);
-
 }
 
 async function eliminarCliente() {
-    const { id } = await inquirer.prompt([
-        { name: "id", message: "ID del cliente a eliminar: " }
-    ]);
+   const clientes = await servicio.obtenerClientes();
+    const id = await seleccionarCliente(clientes, "Selecciona el cliente a eliminar");
+
+    if (!id) return;
 
     const { confirmacion } = await inquirer.prompt([
         {
             type: "confirm",
             name: "confirmacion",
-            message: `Estas seguro de eliminar el cliente con ID ${id}`
+            message: `¿Estás seguro de eliminar el cliente seleccionado?`
         }
     ]);
 
     if (confirmacion) {
         await controladorEliminarCliente(servicio, id);
     } else {
-        console.log(chalk.green("Elminacion cancelada."))
+        console.log(chalk.green("Eliminación cancelada."));
     }
 }
