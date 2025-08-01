@@ -12,7 +12,7 @@ export class Cliente {
             }
 
             if (!telefono || typeof telefono !== "string" || !/^\d{10}$/.test(telefono)) {
-                throw new Error("El telefono debe ser una cadena")
+                throw new Error("El telefono debe ser una cadena numerica")
             }
             
             if (!empresa || typeof empresa !== "string") {

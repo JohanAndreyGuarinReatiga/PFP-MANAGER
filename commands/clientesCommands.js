@@ -59,13 +59,23 @@ async function agregarCliente() {
         { type: "input", name: "empresa", message: "Empresa" },
     ]);
 
-    await controladorAgregarClientes(servicio, datosRegistro);
+    const resultado = await controladorAgregarClientes(servicio, datosRegistro);
+
+    console.log(resultado.mensaje);
+
+    await inquirer.prompt([
+        {
+            type: "input",
+            name: "continuar",
+            message: chalk.gray("Presiona ENTER para volver al menú...")
+        }
+    ])
 }
 
 async function listarClientes(servicio) {
-  await controladorListaClientes(servicio);
+    await controladorListaClientes(servicio);
 
-  await inquirer.prompt([
+    await inquirer.prompt([
         {
             type: "input",
             name: "continuar",
@@ -95,7 +105,16 @@ async function actualizarCliente() {
         return;
     }
 
-    await controladorActualizarClientes(id, datosFiltrados)
+    await controladorActualizarClientes(servicio, id, datosFiltrados)
+
+    await inquirer.prompt([
+        {
+            type: "input",
+            name: "continuar",
+            message: chalk.gray("Presiona ENTER para volver al menú...")
+        }
+    ]);
+
 }
 
 async function eliminarCliente() {
