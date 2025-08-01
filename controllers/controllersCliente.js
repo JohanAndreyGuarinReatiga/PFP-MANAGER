@@ -1,7 +1,5 @@
-import chalk, { Chalk } from "chalk";
+import chalk from "chalk";
 import { ServicioCliente } from "../services/servicioCliente.js";
-
-const servicio = new ServicioCliente
 
 export async function controladorAgregarClientes(servicio, datos) {
     const resultado = await servicio.registrarCliente(datos);
@@ -14,20 +12,31 @@ export async function controladorAgregarClientes(servicio, datos) {
     console.log(resultado.mensaje)
 }
 
-export async function controladorListaClientes(servicio, pagina = 1, limite = 10 ) {
-    const resultado = await servicio.obtenerClientesPaginados(pagina, limite);
+export async function controladorListaClientes(servicio) {
+    const clientes = await servicio.obtenerTodosLosClientes();
 
-    console.table(resultado.clientes);
-    console.log(`Pagina ${resultado.paginaActual} de ${resultado.totalPaginas}`);
+    if (!clientes || clientes.length === 0) {
+        console.log("⚠️  No hay clientes registrados.");
+        return;
+    }
+
+    console.table(
+        clientes.map(c => ({
+            Nombre: c.nombre,
+            Correo: c.correo,
+            Teléfono: c.telefono,
+            Empresa: c.empresa
+        }))
+    );
 }
 
 export async function controladorActualizarClientes(id, nuevosDatos) {
     try {
-        const resultado = await servicio.actualizarCliente(id,nuevosDatos);
+        const resultado = await servicio.actualizarCliente(id, nuevosDatos);
 
-        if(resultado.ok) {
+        if (resultado.ok) {
             console.log(resultado.mensaje);
-        }else {
+        } else {
             console.warn(resultado.mensaje);
         }
     } catch (error) {
@@ -43,5 +52,21 @@ export async function controladorEliminarCliente(servicio, id) {
         return;
     }
 
-    console.log(resultado. mensaje)
+    console.log(resultado.mensaje)
+}
+
+export async function buscarClientePorCorreo(servicio, correo) {
+    try {
+        const cliente = await servicio.buscarClientePorCorreo(correo);
+
+        if (!cliente) {
+            console.log(chalk.red("No se encontró un cliente con ese correo."));
+            return null;
+        }
+
+        return cliente;
+    } catch (error) {
+        console.error(chalk.redBright("Error al buscar cliente por correo:"), error);
+        return null;
+    }
 }

@@ -14,27 +14,12 @@ export class ServicioCliente {
         if (!this.db) await this.ready;
     }
 
-    async obtenerClientesPaginados(pagina = 1, limite = 10) {
-        await this.esperarDB();
+    async obtenerTodosLosClientes() {
+  await this.esperarDB();
 
-        const skip = (pagina - 1) * limite;
+  return await this.db.collection("clientes").find({}).toArray();
+}
 
-        const clientes = await this.db
-            .collection("clientes")
-            .find({})
-            .skip(skip)
-            .limit(limite)
-            .toArray();
-
-        const total = await this.db.collection("clientes").countDocuments();
-
-        return {
-            clientes,
-            total,
-            paginaActual: pagina,
-            totalPaginas: Math.ceil(total / limite)
-        };
-    }
 
     async buscarClientes(texto, pagina = 1, limite = 10) {
         await this.esperarDB();
@@ -50,7 +35,7 @@ export class ServicioCliente {
 
         const clientes = await this.db
             .collection("clientes")
-            .find({})
+            .find(filtro)
             .skip(skip)
             .limit(limite)
             .toArray();
@@ -71,6 +56,11 @@ export class ServicioCliente {
         return await this.db
             .collection("clientes")
             .findOne({ _id: new ObjectId(id) });
+    }
+
+     async buscarClientePorCorreo(correo) {
+        await this.esperarDB();
+        return await this.db.collection("clientes").findOne({ correo });
     }
 
     async registrarCliente(clienteData) {
@@ -165,7 +155,7 @@ export class ServicioCliente {
             }
         }
 
-        const resultado = await this.db.collection("cliente").updateOne(
+        const resultado = await this.db.collection("clientes").updateOne(
             {_id: new ObjectId(id)},
             {$set: nuevosDatos}
         );

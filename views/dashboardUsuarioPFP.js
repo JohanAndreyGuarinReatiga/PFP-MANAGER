@@ -1,12 +1,13 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
+import { menuGestionClientes } from "../commands/clientesCommands.js";
 
 export async function mostrarMenuUsuario() {
     let salir = false;
 
     while (!salir) {
         console.clear();
-        console.log(chalk.bold.cyanBright("=== PPF-MANAGER ==="));
+        console.log(chalk.bold.magentaBright("=== PPF-MANAGER ==="));
         
         const {opcion} = await inquirer.prompt([
             {
@@ -27,7 +28,7 @@ export async function mostrarMenuUsuario() {
 
         switch (opcion) {
             case "clientes":
-                console.log(chalk.red("modulo no  implementada"));
+                await menuGestionClientes()
                 break;
 
             case "propuestas":
