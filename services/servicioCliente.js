@@ -14,11 +14,11 @@ export class ServicioCliente {
         if (!this.db) await this.ready;
     }
 
-    async obtenerTodosLosClientes() {
-  await this.esperarDB();
+    async obtenerClientes() {
+        await this.esperarDB();
 
-  return await this.db.collection("clientes").find({}).toArray();
-}
+        return await this.db.collection("clientes").find({}).toArray();
+    }
 
 
     async buscarClientes(texto, pagina = 1, limite = 10) {
@@ -58,14 +58,14 @@ export class ServicioCliente {
             .findOne({ _id: new ObjectId(id) });
     }
 
-     async buscarClientePorCorreo(correo) {
+    async buscarClientePorCorreo(correo) {
         await this.esperarDB();
         return await this.db.collection("clientes").findOne({ correo });
     }
 
     async registrarCliente(clienteData) {
         await this.esperarDB();
-        
+
         try {
             const correoExistente = await this.db.collection("clientes").findOne({ correo: clienteData.correo });
 
@@ -88,10 +88,10 @@ export class ServicioCliente {
         }
     }
 
-       async eliminarCliente(id) {
+    async eliminarCliente(id) {
         await this.esperarDB();
 
-        const cliente = await this.db.collection("clientes").findOne({_id: new ObjectId(id)});
+        const cliente = await this.db.collection("clientes").findOne({ _id: new ObjectId(id) });
 
         if (!cliente) {
             return {
@@ -101,20 +101,20 @@ export class ServicioCliente {
         }
 
         const proyectoActivo = await this.db.collection("proyectos").findOne({
-            clienteId: new ObjectId(id), 
+            clienteId: new ObjectId(id),
             estado: "activo"
         });
 
         if (proyectoActivo) {
-            return{
+            return {
                 ok: false,
                 mensaje: chalk.yellowBright("No se puede eliminar el cliente porque tiene proyectos activos.")
             }
         }
 
-        const resultado = await this.db.collection("clientes").deleteOne({_id: new ObjectId(id)});
+        const resultado = await this.db.collection("clientes").deleteOne({ _id: new ObjectId(id) });
 
-        if (resultado.deletedCount !== 0){
+        if (resultado.deletedCount !== 0) {
             return {
                 ok: true,
                 mensaje: chalk.greenBright(`Cliente ${cliente.nombre} eliminado correctamente.`)
@@ -122,19 +122,19 @@ export class ServicioCliente {
         } else {
             return {
                 ok: false,
-                mensaje:chalk.redBright("No se pudo eliminar el cliente. Intente nuevamente.")
+                mensaje: chalk.redBright("No se pudo eliminar el cliente. Intente nuevamente.")
             }
         }
     }
 
-    async actualizarCliente(id, nuevosDatos){
+    async actualizarCliente(id, nuevosDatos) {
         await this.esperarDB();
 
         //buscar el cliente
-        const clienteExistente = await this.db.collection("clientes").findOne({_id: new ObjectId(id)});
+        const clienteExistente = await this.db.collection("clientes").findOne({ _id: new ObjectId(id) });
 
-        if(!clienteExistente) {
-            return{
+        if (!clienteExistente) {
+            return {
                 ok: false,
                 mensaje: chalk.redBright("Cliente no encontrado.")
             }
@@ -144,11 +144,11 @@ export class ServicioCliente {
         if (nuevosDatos.correo) {
             const correoRepetido = await this.db.collection("clientes").findOne({
                 correo: nuevosDatos.correo,
-                _id: {$ne: new ObjectId(id)}
+                _id: { $ne: new ObjectId(id) }
             });
 
-            if(correoRepetido) {
-                return{
+            if (correoRepetido) {
+                return {
                     ok: false,
                     mensaje: chalk.yellowBright("El correo ya está siendo usado por otro cliente.")
                 }
@@ -156,18 +156,18 @@ export class ServicioCliente {
         }
 
         const resultado = await this.db.collection("clientes").updateOne(
-            {_id: new ObjectId(id)},
-            {$set: nuevosDatos}
+            { _id: new ObjectId(id) },
+            { $set: nuevosDatos }
         );
 
         if (resultado.modifiedCount > 0) {
-            return{
+            return {
                 ok: true,
                 mensaje: chalk.greenBright(`Cliente ${clienteExistente.nombre} actualizado correctamente.`)
             }
         } else {
-            return{
-                ok:false,
+            return {
+                ok: false,
                 mensaje: chalk.yellowBright("No se realizaron cambios.")
             }
         }

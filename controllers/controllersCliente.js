@@ -7,7 +7,7 @@ export async function controladorAgregarClientes(servicio, datos) {
 }
 
 export async function controladorListaClientes(servicio) {
-    const clientes = await servicio.obtenerTodosLosClientes();
+    const clientes = await servicio.obtenerClientes();
 
     if (!clientes || clientes.length === 0) {
         console.log(" No hay clientes registrados.");
