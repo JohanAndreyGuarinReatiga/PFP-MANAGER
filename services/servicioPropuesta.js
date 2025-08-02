@@ -3,7 +3,7 @@ import { connection } from '../config/db.js';
 import { Propuesta } from '../models/propuesta.js';
 import { Proyecto } from '../models/proyecto.js';
 
-export class PropuestaService {
+export class ServicioPropuesta {
   static collection = 'propuestas';
 
   // Crear propuesta
@@ -15,21 +15,25 @@ export class PropuestaService {
     }
 
     const propuesta = new Propuesta(data);
+    const errores = propuesta.validate();
+    if (errores.length > 0) throw new Error(errores.join('; '));
+
     const resultado = await db.collection(this.collection).insertOne(propuesta.toDBObject());
 
+    // Obtener cliente para devolverlo en la respuesta
+    const cliente = await db.collection('clientes').findOne({ _id: new ObjectId(data.clienteId) });
+
     return {
-      id: resultado.insertedId,
-      numero: propuesta.numero,
-      estado: propuesta.estado,
-      fechaCreacion: propuesta.fechaCreacion,
+      ...propuesta.toDBObject(),
+      cliente: cliente ? { nombre: cliente.nombre, correo: cliente.correo } : {},
     };
   }
 
   // Listar propuestas con filtros, orden y paginación
-  static async listarPropuestas({ estado, clienteId, pagina = 1, limite = 10 } = {}) {
+  static async listarPropuestas({ estado, clienteId, pagina = 1, limite = 10, ordenarPor = 'fechaCreacion', orden = -1 } = {}) {
     const db = await connection();
-
     const filtro = {};
+
     if (estado && estado !== 'todos') filtro.estado = estado;
     if (clienteId && clienteId !== 'todos') filtro.clienteId = new ObjectId(clienteId);
 
@@ -37,29 +41,42 @@ export class PropuestaService {
 
     const cursor = db.collection(this.collection)
       .find(filtro)
-      .sort({ fechaCreacion: -1 })
+      .sort({ [ordenarPor]: orden })
       .skip(skip)
       .limit(limite);
 
     const total = await db.collection(this.collection).countDocuments(filtro);
     const propuestas = await cursor.toArray();
 
+    // Obtener los clientes para mapearlos dentro de las propuestas
+    const clientesMap = {};
+    const clienteIds = [...new Set(propuestas.map(p => p.clienteId.toString()))];
+    const clientes = await db.collection("clientes").find({ _id: { $in: clienteIds.map(id => new ObjectId(id)) } }).toArray();
+    clientes.forEach(c => {
+      clientesMap[c._id.toString()] = { nombre: c.nombre, empresa: c.empresa };
+    });
+
+    propuestas.forEach(p => {
+      p.cliente = clientesMap[p.clienteId.toString()] || { nombre: "Desconocido", empresa: "" };
+    });
+
     return {
       propuestas,
       paginacion: {
-        pagina,
+        paginaActual: pagina,
         limite,
         total,
         totalPaginas: Math.ceil(total / limite),
+        tieneSiguiente: pagina * limite < total,
+        tieneAnterior: pagina > 1,
       },
     };
   }
 
-  // Cambiar estado de una propuesta (transacción si se acepta)
-  static async cambiarEstado(id, nuevoEstado) {
+  // Cambiar estado con transacción y creación de proyecto
+  static async cambiarEstadoPropuesta(id, nuevoEstado) {
     const db = await connection();
-    const cliente = db.client;
-    const session = cliente.startSession();
+    const session = db.client.startSession();
     const propuestaId = new ObjectId(id);
     let resultado = {};
 
@@ -71,7 +88,7 @@ export class PropuestaService {
         const propuesta = new Propuesta({ ...doc, clienteId: doc.clienteId.toString() });
 
         if (["Aceptada", "Rechazada"].includes(propuesta.estado)) {
-          throw new Error("No se puede modificar una propuesta ya aceptada o rechazada.");
+          throw new Error("No se puede cambiar el estado de una propuesta ya aceptada o rechazada");
         }
 
         propuesta.cambiarEstado(nuevoEstado);
@@ -81,26 +98,32 @@ export class PropuestaService {
           {
             $set: {
               estado: propuesta.estado,
+              fechaCambioEstado: propuesta.fechaCambioEstado,
               fechaActualizacion: propuesta.fechaActualizacion,
             },
           },
           { session }
         );
 
-        resultado.propuesta = {
-          id: propuestaId,
-          nuevoEstado: propuesta.estado,
+        resultado = {
+          id: propuesta._id,
+          numero: propuesta.numero,
+          titulo: propuesta.titulo,
+          cliente: await db.collection("clientes").findOne({ _id: new ObjectId(propuesta.clienteId) }, { session }),
+          precio: propuesta.precio,
+          estado: propuesta.estado,
+          fechaCambioEstado: propuesta.fechaCambioEstado,
         };
 
         if (nuevoEstado === "Aceptada") {
-          const proyecto = Proyecto.crearDesdePropuesta(doc, doc.clienteId.toString());
-          const resultadoProyecto = await db.collection("proyectos").insertOne(proyecto.toDBObject(), { session });
+          const nuevoProyecto = Proyecto.crearDesdePropuesta(doc, propuesta.clienteId);
+          const resultProyecto = await db.collection("proyectos").insertOne(nuevoProyecto.toDBObject(), { session });
 
           resultado.proyecto = {
-            id: resultadoProyecto.insertedId,
-            nombre: proyecto.nombre,
-            estado: proyecto.estado,
-            codigoProyecto: proyecto.codigoProyecto,
+            id: resultProyecto.insertedId,
+            nombre: nuevoProyecto.nombre,
+            codigoProyecto: nuevoProyecto.codigoProyecto,
+            estado: nuevoProyecto.estado,
           };
         }
       });
@@ -115,7 +138,66 @@ export class PropuestaService {
   static async eliminarPropuesta(id) {
     const db = await connection();
     const result = await db.collection(this.collection).deleteOne({ _id: new ObjectId(id) });
-
     return { eliminado: result.deletedCount === 1 };
+  }
+
+  // Listar clientes para usar en formularios CLI
+  static async listarClientes() {
+    const db = await connection();
+    return await db.collection('clientes').find().sort({ nombre: 1 }).toArray();
+  }
+
+  // Listar propuestas pendientes
+  static async listarPropuestasPendientes() {
+    const db = await connection();
+    const propuestas = await db.collection(this.collection).find({ estado: "Pendiente" }).sort({ fechaCreacion: -1 }).toArray();
+
+    // Añadir datos del cliente
+    const clienteIds = propuestas.map(p => p.clienteId.toString());
+    const clientes = await db.collection("clientes").find({ _id: { $in: clienteIds.map(id => new ObjectId(id)) } }).toArray();
+    const clienteMap = Object.fromEntries(clientes.map(c => [c._id.toString(), c]));
+
+    return propuestas.map(p => ({
+      ...p,
+      cliente: clienteMap[p.clienteId.toString()] || { nombre: "Desconocido" },
+    }));
+  }
+
+  // Obtener una propuesta por ID con cliente
+  static async obtenerPropuestaDetallada(id) {
+    const db = await connection();
+    const propuesta = await db.collection(this.collection).findOne({ _id: new ObjectId(id) });
+    if (!propuesta) return null;
+
+    const cliente = await db.collection("clientes").findOne({ _id: new ObjectId(propuesta.clienteId) });
+
+    return {
+      ...propuesta,
+      cliente: cliente || { nombre: "Desconocido", empresa: "" },
+    };
+  }
+
+  // Estadísticas para resumen
+  static async obtenerEstadisticas() {
+    const db = await connection();
+    const agregacion = await db.collection(this.collection).aggregate([
+      {
+        $group: {
+          _id: "$estado",
+          count: { $sum: 1 },
+          totalValor: { $sum: "$precio" },
+        },
+      },
+    ]).toArray();
+
+    const resultado = {};
+    agregacion.forEach(e => {
+      resultado[e._id] = {
+        count: e.count,
+        totalValor: e.totalValor,
+      };
+    });
+
+    return resultado;
   }
 }
