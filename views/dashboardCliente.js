@@ -1,6 +1,6 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
-import { buscarClientePorCorreo } from "../services/cliente.service.js";
+import { buscarClientePorCorreo } from "../controllers/controllersCliente.js";
 
 export async function mostrarMenuCliente() {
   const { correo } = await inquirer.prompt([
