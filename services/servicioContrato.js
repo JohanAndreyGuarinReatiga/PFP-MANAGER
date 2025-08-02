@@ -18,17 +18,20 @@ export class ContratoService {
     const fechaInicio = new Date(data.fechaInicio)
     const fechaFin = new Date(data.fechaFin)
 
-    // Validar que las fechas del contrato estén dentro del rango del proyecto
+    // Validaciones específicas de fechas con el proyecto
+    const erroresFechas = []
     if (fechaInicio < new Date(proyecto.fechaInicio)) {
-      throw new Error("La fecha de inicio del contrato no puede ser anterior a la del proyecto")
+      erroresFechas.push("La fecha de inicio del contrato no puede ser anterior a la del proyecto")
     }
     if (proyecto.fechaFin && fechaFin > new Date(proyecto.fechaFin)) {
-      throw new Error("La fecha de fin del contrato no puede ser posterior a la del proyecto")
+      erroresFechas.push("La fecha de fin del contrato no puede ser posterior a la del proyecto")
+    }
+    if (fechaInicio >= fechaFin) {
+      erroresFechas.push("La fecha de inicio debe ser anterior a la fecha de fin")
     }
 
-    // Validar que fecha inicio sea anterior a fecha fin
-    if (fechaInicio >= fechaFin) {
-      throw new Error("La fecha de inicio debe ser anterior a la fecha de fin")
+    if (erroresFechas.length > 0) {
+      throw new Error(erroresFechas.join("; "))
     }
 
     const contrato = new Contrato(data)
@@ -61,11 +64,23 @@ export class ContratoService {
     if (!proyecto) throw new Error("Proyecto asociado no encontrado.")
 
     if (cambios.fechaInicio || cambios.fechaFin) {
-      const f1 = new Date(cambios.fechaInicio || contrato.fechaInicio)
-      const f2 = new Date(cambios.fechaFin || contrato.fechaFin)
+      const fechaInicioNueva = new Date(cambios.fechaInicio || contrato.fechaInicio)
+      const fechaFinNueva = new Date(cambios.fechaFin || contrato.fechaFin)
 
-      if (f1 < new Date(proyecto.fechaInicio) || f2 > new Date(proyecto.fechaFin)) {
-        throw new Error("Las fechas deben estar dentro del rango del proyecto.")
+      const erroresFechas = []
+
+      if (fechaInicioNueva < new Date(proyecto.fechaInicio)) {
+        erroresFechas.push("La fecha de inicio del contrato no puede ser anterior a la del proyecto")
+      }
+      if (proyecto.fechaFin && fechaFinNueva > new Date(proyecto.fechaFin)) {
+        erroresFechas.push("La fecha de fin del contrato no puede ser posterior a la del proyecto")
+      }
+      if (fechaInicioNueva >= fechaFinNueva) {
+        erroresFechas.push("La fecha de inicio debe ser anterior a la fecha de fin")
+      }
+
+      if (erroresFechas.length > 0) {
+        throw new Error(erroresFechas.join("; "))
       }
     }
 
