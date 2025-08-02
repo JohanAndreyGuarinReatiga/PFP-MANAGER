@@ -59,26 +59,6 @@ export class Propuesta {
     return `PROP-${year}${month}${day}-${timestamp}`
   }
 
-  // Método para obtener color por estado
-  getEstadoConColor() {
-    const colores = {
-      Pendiente: "yellow",
-      Aceptada: "green",
-      Rechazada: "red",
-    }
-    return { estado: this.estado, color: colores[this.estado] || "white" }
-  }
-
-  // Cambiar estado
-  cambiarEstado(nuevoEstado) {
-    const estadosValidos = ["Pendiente", "Aceptada", "Rechazada"]
-    if (!estadosValidos.includes(nuevoEstado)) {
-      throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
-    }
-    this.estado = nuevoEstado
-    this.fechaActualizacion = new Date()
-  }
-
   // Validar si está vigente
   estaVigente() {
     return this.fechaLimite > new Date() && this.estado === "Pendiente"

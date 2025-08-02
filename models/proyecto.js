@@ -96,18 +96,6 @@ export class Proyecto {
     this.estado = nuevoEstado
   }
 
-  static crearDesdePropuesta(propuestaData, clienteId) {
-    return new Proyecto({
-      clienteId,
-      propuestaId: propuestaData._id,
-      nombre: propuestaData.nombre || `Proyecto - ${propuestaData.descripcion.substring(0, 30)}`,
-      descripcion: propuestaData.descripcion,
-      valor: propuestaData.precio,
-      fechaInicio: new Date(),
-      fechaFin: propuestaData.plazoDias ? new Date(Date.now() + propuestaData.plazoDias * 24 * 60 * 60 * 1000) : null,
-    })
-  }
-
   toDBObject() {
     return {
       _id: this._id,
