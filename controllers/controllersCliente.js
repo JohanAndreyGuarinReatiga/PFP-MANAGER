@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { ServicioCliente } from "../services/servicioCliente.js";
 
 export async function controladorAgregarClientes(servicio, datos) {
     const resultado = await servicio.registrarCliente(datos);

@@ -1,7 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { connection } from '../config/db.js';
 import { Contrato } from '../models/contrato.js';
-import { servicioProyecto } from './servicioProyecto.js';
 
 export class ContratoService {
   static collection = 'contratos';
