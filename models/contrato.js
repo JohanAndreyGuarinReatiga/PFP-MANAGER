@@ -45,23 +45,6 @@ export class Contrato {
     return errors
   }
 
-  async validarFechasConProyecto(db) {
-    const proyecto = await db.collection("proyectos").findOne({ _id: new ObjectId(this.proyectoId) })
-    if (!proyecto) {
-      throw new Error("Proyecto no encontrado")
-    }
-
-    const errors = []
-    if (new Date(this.fechaInicio) < new Date(proyecto.fechaInicio)) {
-      errors.push("La fecha de inicio del contrato no puede ser anterior a la del proyecto")
-    }
-    if (proyecto.fechaFin && new Date(this.fechaFin) > new Date(proyecto.fechaFin)) {
-      errors.push("La fecha de fin del contrato no puede ser posterior a la del proyecto")
-    }
-
-    return errors
-  }
-
   firmar() {
     if (this.estado !== "borrador") {
       throw new Error("Solo se pueden firmar contratos en borrador")

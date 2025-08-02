@@ -1,6 +1,5 @@
 // initDB.js
-import { connection } from "./db.js";
-import { ObjectId } from "mongodb";
+import { connection } from "./db.js"
 
 const schemas = {
   clientes: {
@@ -12,9 +11,9 @@ const schemas = {
         correo: { bsonType: "string", pattern: "^[\\w.-]+@([\\w-]+\\.)+[\\w-]{2,4}$" },
         telefono: { bsonType: "string" },
         empresa: { bsonType: "string" },
-        fechaRegistro: { bsonType: "date" }
-      }
-    }
+        fechaRegistro: { bsonType: "date" },
+      },
+    },
   },
   propuestas: {
     $jsonSchema: {
@@ -28,7 +27,7 @@ const schemas = {
         "estado",
         "numero",
         "fechaCreacion",
-        "fechaActualizacion"
+        "fechaActualizacion",
       ],
       properties: {
         _id: { bsonType: "objectId" },
@@ -40,16 +39,16 @@ const schemas = {
         fechaLimite: { bsonType: "date" },
         estado: {
           bsonType: "string",
-          enum: ["Pendiente", "Aceptada", "Rechazada"]
+          enum: ["Pendiente", "Aceptada", "Rechazada"],
         },
         numero: {
           bsonType: "string",
-          description: "Número único de la propuesta"
+          description: "Número único de la propuesta",
         },
         fechaCreacion: { bsonType: "date" },
-        fechaActualizacion: { bsonType: "date" }
-      }
-    }
+        fechaActualizacion: { bsonType: "date" },
+      },
+    },
   },
   proyectos: {
     $jsonSchema: {
@@ -66,7 +65,7 @@ const schemas = {
         valor: { bsonType: "double", minimum: 0 },
         estado: {
           bsonType: "string",
-          enum: ["Activo", "Pausado", "Finalizado", "Cancelado"]
+          enum: ["Activo", "Pausado", "Finalizado", "Cancelado"],
         },
         codigoProyecto: { bsonType: "string" },
         avances: {
@@ -77,13 +76,13 @@ const schemas = {
             required: ["fecha", "descripcion"],
             properties: {
               fecha: { bsonType: "date" },
-              descripcion: { bsonType: "string" }
-            }
-          }
+              descripcion: { bsonType: "string" },
+            },
+          },
         },
-        fechaCreacion: { bsonType: "date" }
-      }
-    }
+        fechaCreacion: { bsonType: "date" },
+      },
+    },
   },
   contratos: {
     $jsonSchema: {
@@ -99,13 +98,13 @@ const schemas = {
         valorTotal: { bsonType: "double", minimum: 0 },
         terminosPago: { bsonType: "string" },
         estado: {
-          enum: ["borrador", "activo", "finalizado", "cancelado"]
+          enum: ["borrador", "firmado", "cancelado"],
         },
         fechaFirma: { bsonType: ["date", "null"] },
         fechaCreacion: { bsonType: "date" },
-        fechaActualizacion: { bsonType: "date" }
-      }
-    }
+        fechaActualizacion: { bsonType: "date" },
+      },
+    },
   },
   entregables: {
     $jsonSchema: {
@@ -115,30 +114,30 @@ const schemas = {
         _id: { bsonType: "objectId" },
         titulo: {
           bsonType: "string",
-          description: "El título es obligatorio"
+          description: "El título es obligatorio",
         },
         descripcion: {
           bsonType: "string",
-          description: "La descripción es obligatoria"
+          description: "La descripción es obligatoria",
         },
         proyectoId: {
           bsonType: "objectId",
-          description: "ID del proyecto asociado"
+          description: "ID del proyecto asociado",
         },
         fechaLimite: {
           bsonType: "date",
-          description: "Fecha límite obligatoria"
+          description: "Fecha límite obligatoria",
         },
         estado: {
           enum: ["Pendiente", "En progreso", "Entregado", "Aprobado", "Rechazado"],
-          description: "Estado del entregable"
+          description: "Estado del entregable",
         },
         fechaEntrega: {
           bsonType: ["date", "null"],
-          description: "Fecha de entrega (opcional)"
-        }
-      }
-    }
+          description: "Fecha de entrega (opcional)",
+        },
+      },
+    },
   },
   finanzas: {
     $jsonSchema: {
@@ -147,39 +146,39 @@ const schemas = {
       properties: {
         proyectoId: { bsonType: "objectId" },
         tipo: {
-          enum: ["ingreso", "egreso"]
+          enum: ["ingreso", "egreso"],
         },
         descripcion: { bsonType: "string" },
         monto: { bsonType: "double", minimum: 0 },
-        fecha: { bsonType: "date" }
-      }
-    }
-  }
-};
+        fecha: { bsonType: "date" },
+      },
+    },
+  },
+}
 
 async function initDB() {
-  const db = await connection();
+  const db = await connection()
 
   for (const [nombreColeccion, schema] of Object.entries(schemas)) {
-    const existe = await db.listCollections({ name: nombreColeccion }).toArray();
+    const existe = await db.listCollections({ name: nombreColeccion }).toArray()
 
     if (existe.length === 0) {
       await db.createCollection(nombreColeccion, {
-        validator: schema
-      });
-      console.log(`Colección '${nombreColeccion}' creada con schema.`);
-    if (nombreColeccion === "clientes") {
-      await db.collection("clientes").createIndex({ correo: 1 }, { unique: true });
-      console.log("Índice único en 'correo' creado.");
-    }
+        validator: schema,
+      })
+      console.log(`Colección '${nombreColeccion}' creada con schema.`)
+      if (nombreColeccion === "clientes") {
+        await db.collection("clientes").createIndex({ correo: 1 }, { unique: true })
+        console.log("Índice único en 'correo' creado.")
+      }
     } else {
-      console.log(`Colección '${nombreColeccion}' ya existe.`);
+      console.log(`Colección '${nombreColeccion}' ya existe.`)
     }
   }
 
-  process.exit(); 
+  process.exit()
 }
 
-initDB().catch(err => {
-  console.error("Error al inicializar la base de datos:", err);
-});
+initDB().catch((err) => {
+  console.error("Error al inicializar la base de datos:", err)
+})
