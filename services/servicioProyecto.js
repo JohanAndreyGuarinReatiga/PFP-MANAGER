@@ -71,5 +71,40 @@ static async eliminarProyecto(id){
   return{ eliminado: resultado.modifiedCount === 1 }
 }
 
+static async crearProyectoDesdePropuesta(propuestaId) {
+  const db = await connection();
+
+  // Validar existencia y estado de la propuesta
+  const propuesta = await db.collection('propuestas').findOne({
+    _id: new ObjectId(propuestaId),
+    estado: "Aceptada",
+  });
+
+  if (!propuesta) {
+    throw new Error("Propuesta no encontrada o no está en estado 'Aceptada'.");
+  }
+
+  const proyectoData = {
+    clienteId: propuesta.clienteId,
+    propuestaId: propuesta._id,
+    nombre: propuesta.titulo,
+    descripcion: propuesta.descripcion || "",
+    fechaInicio: new Date(),
+    fechaFin: propuesta.fechaLimite ? new Date(propuesta.fechaLimite) : null,
+    valor: propuesta.precio || 0,
+    estado: "Activo",
+  };
+
+  const nuevoProyecto = new Proyecto(proyectoData);
+  const resultado = await db.collection(this.collection).insertOne(nuevoProyecto.toDBObject());
+
+  return {
+    id: resultado.insertedId,
+    ...nuevoProyecto.toDBObject(),
+  };
+}
+
 
 }
+
+
