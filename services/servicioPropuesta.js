@@ -8,27 +8,21 @@ export class ServicioPropuesta {
 
   // Crear propuesta
   static async crearPropuesta(data) {
-    const db = await connection();
-
-    if (typeof data.fechaLimite === 'string') {
-      data.fechaLimite = new Date(data.fechaLimite);
+    try {
+      const db = await connection();
+      const propuesta = new Propuesta(data);
+  
+      console.log("propuesta a crear",propuesta.toDBObject())// solo para ver tambien
+      // Inserta el objeto plano, no la instancia con métodos
+      await db.collection(this.collection).insertOne(propuesta.toDBObject());
+  
+      return propuesta;
+    } catch (error) {
+      console.error("Error al insertar propuesta:", error.message);
+      throw new Error("Error al crear la propuesta: " + error.message);
     }
-
-    const propuesta = new Propuesta(data);
-    const errores = propuesta.validate();
-    if (errores.length > 0) throw new Error(errores.join('; '));
-
-    const resultado = await db.collection(this.collection).insertOne(propuesta.toDBObject());
-
-    // Obtener cliente para devolverlo en la respuesta
-    const cliente = await db.collection('clientes').findOne({ _id: new ObjectId(data.clienteId) });
-
-    return {
-      ...propuesta.toDBObject(),
-      cliente: cliente ? { nombre: cliente.nombre, correo: cliente.correo } : {},
-    };
   }
-
+  
   // Listar propuestas con filtros, orden y paginación
   static async listarPropuestas({ estado, clienteId, pagina = 1, limite = 10, ordenarPor = 'fechaCreacion', orden = -1 } = {}) {
     const db = await connection();
@@ -117,6 +111,7 @@ export class ServicioPropuesta {
 
         if (nuevoEstado === "Aceptada") {
           const nuevoProyecto = Proyecto.crearDesdePropuesta(doc, propuesta.clienteId);
+          console.log("Proyecto a insertar:", nuevoProyecto.toDBObject());// para ver nada mas
           const resultProyecto = await db.collection("proyectos").insertOne(nuevoProyecto.toDBObject(), { session });
 
           resultado.proyecto = {

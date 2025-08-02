@@ -19,33 +19,59 @@ const schemas = {
   propuestas: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["clienteId", "descripcion", "precio", "plazoDias"],
+      required: [
+        "clienteId",
+        "titulo",
+        "descripcion",
+        "precio",
+        "fechaLimite",
+        "estado",
+        "numero",
+        "fechaCreacion",
+        "fechaActualizacion"
+      ],
       properties: {
+        _id: { bsonType: "objectId" },
         clienteId: { bsonType: "objectId" },
+        titulo: { bsonType: "string" },
         descripcion: { bsonType: "string" },
+        condiciones: { bsonType: "string" },
         precio: { bsonType: "double", minimum: 0 },
-        plazoDias: { bsonType: "int", minimum: 1 },
+        fechaLimite: { bsonType: "date" },
         estado: {
-          enum: ["pendiente", "aceptada", "rechazada"]
+          bsonType: "string",
+          enum: ["Pendiente", "Aceptada", "Rechazada"]
         },
-        fechaCreacion: { bsonType: "date" }
+        numero: {
+          bsonType: "string",
+          description: "Número único de la propuesta"
+        },
+        fechaCreacion: { bsonType: "date" },
+        fechaActualizacion: { bsonType: "date" }
       }
     }
   },
   proyectos: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["clienteId", "propuestaId", "nombre"],
+      required: ["clienteId", "nombre", "estado", "fechaInicio", "valor", "codigoProyecto"],
       properties: {
         clienteId: { bsonType: "objectId" },
-        propuestaId: { bsonType: "objectId" },
-        contratoId: { bsonType: "objectId" },
+        propuestaId: { bsonType: ["objectId", "null"] },
+        contratoId: { bsonType: ["objectId", "null"] },
         nombre: { bsonType: "string" },
+        descripcion: { bsonType: "string" },
+        fechaInicio: { bsonType: "date" },
+        fechaFin: { bsonType: ["date", "null"] },
+        valor: { bsonType: "double", minimum: 0 },
         estado: {
-          enum: ["activo", "pausado", "finalizado", "cancelado"]
+          bsonType: "string",
+          enum: ["Activo", "Pausado", "Finalizado", "Cancelado"]
         },
+        codigoProyecto: { bsonType: "string" },
         avances: {
           bsonType: "array",
+          minItems: 0,
           items: {
             bsonType: "object",
             required: ["fecha", "descripcion"],
@@ -54,35 +80,63 @@ const schemas = {
               descripcion: { bsonType: "string" }
             }
           }
-        }
+        },
+        fechaCreacion: { bsonType: "date" }
       }
     }
   },
   contratos: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["proyectoId", "condiciones", "fechaInicio", "fechaFin", "valorTotal"],
+      required: ["proyectoId", "condiciones", "fechaInicio", "fechaFin", "valorTotal", "terminosPago", "estado", "fechaCreacion"],
       properties: {
+        _id: { bsonType: "objectId" },
+        numero: { bsonType: "string" },
         proyectoId: { bsonType: "objectId" },
         condiciones: { bsonType: "string" },
         fechaInicio: { bsonType: "date" },
         fechaFin: { bsonType: "date" },
-        valorTotal: { bsonType: "double", minimum: 0 }
+        valorTotal: { bsonType: "double", minimum: 0 },
+        terminosPago: { bsonType: "string" },
+        estado: {
+          enum: ["borrador", "activo", "finalizado", "cancelado"]
+        },
+        fechaFirma: { bsonType: ["date", "null"] },
+        fechaCreacion: { bsonType: "date" },
+        fechaActualizacion: { bsonType: "date" }
       }
     }
   },
   entregables: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["proyectoId", "nombre", "fechaLimite"],
+      required: ["titulo", "descripcion", "proyectoId", "fechaLimite", "estado"],
       properties: {
-        proyectoId: { bsonType: "objectId" },
-        nombre: { bsonType: "string" },
-        fechaLimite: { bsonType: "date" },
-        estado: {
-          enum: ["pendiente", "entregado", "aprobado", "rechazado"]
+        _id: { bsonType: "objectId" },
+        titulo: {
+          bsonType: "string",
+          description: "El título es obligatorio"
         },
-        fechaEntrega: { bsonType: "date" }
+        descripcion: {
+          bsonType: "string",
+          description: "La descripción es obligatoria"
+        },
+        proyectoId: {
+          bsonType: "objectId",
+          description: "ID del proyecto asociado"
+        },
+        fechaLimite: {
+          bsonType: "date",
+          description: "Fecha límite obligatoria"
+        },
+        estado: {
+          enum: ["Pendiente", "En progreso", "Entregado", "Aprobado", "Rechazado"],
+          description: "Estado del entregable"
+        },
+        fechaEntrega: {
+          bsonType: ["date", "null"],
+          description: "Fecha de entrega (opcional)"
+        }
       }
     }
   },

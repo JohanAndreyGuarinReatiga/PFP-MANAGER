@@ -64,6 +64,16 @@ export class Propuesta {
     return this.fechaLimite > new Date() && this.estado === "Pendiente"
   }
 
+  cambiarEstado(nuevoEstado) {
+    const estadosValidos = ["Pendiente", "Aceptada", "Rechazada"]
+    if (!estadosValidos.includes(nuevoEstado)) {
+      throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
+    }
+
+    this.estado = nuevoEstado
+    this.fechaActualizacion = new Date()
+  }
+
   toDBObject() {
     return {
       _id: this._id,

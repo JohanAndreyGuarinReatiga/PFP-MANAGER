@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb"
+import { ObjectId, Double } from "mongodb"
 
 export class Proyecto {
   constructor({
@@ -61,6 +61,23 @@ export class Proyecto {
     this.avances = Array.isArray(avances) ? avances : []
     this.fechaCreacion = new Date()
   }
+  static crearDesdePropuesta(propuesta, clienteId) {
+    if (!propuesta || !clienteId) {
+      throw new Error("Datos insuficientes para crear un proyecto desde la propuesta.");
+    }
+  
+    return new Proyecto({
+      clienteId: new ObjectId(clienteId),
+      propuestaId: propuesta._id,
+      nombre: propuesta.titulo,
+      descripcion: propuesta.descripcion || "",
+      fechaInicio: new Date(), // Usa hoy como fecha de inicio
+      valor: propuesta.precio || 0,
+      estado: "Activo",
+      // Los campos restantes como contratoId, fechaFin, avances, etc., se mantienen con sus valores por defecto
+    });
+  }
+  
 
   #generarCodigoProyecto() {
     const timestamp = Date.now().toString()
@@ -98,19 +115,19 @@ export class Proyecto {
 
   toDBObject() {
     return {
-      _id: this._id,
       clienteId: this.clienteId,
-      propuestaId: this.propuestaId,
-      contratoId: this.contratoId,
+      propuestaId: this.propuestaId || null,
+      contratoId: this.contratoId || null,
       nombre: this.nombre,
-      descripcion: this.descripcion,
+      descripcion: this.descripcion || "",
       fechaInicio: this.fechaInicio,
-      fechaFin: this.fechaFin,
-      valor: this.valor,
+      fechaFin: this.fechaFin || null,
+      valor: new Double(this.valor),
       estado: this.estado,
       codigoProyecto: this.codigoProyecto,
-      avances: this.avances,
-      fechaCreacion: this.fechaCreacion,
-    }
+      avances: this.avances || [],
+      fechaCreacion: this.fechaCreacion || new Date(),
+    };
   }
+  
 }

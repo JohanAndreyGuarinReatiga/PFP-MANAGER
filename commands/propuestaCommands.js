@@ -61,7 +61,7 @@ export async function menuPropuestas() {
 
 async function crearPropuestaCLI() {
   try {
-    const clientes = await ServicioCliente.obtenerClientes();
+    const clientes =await ServicioPropuesta.listarClientes()
     if (!clientes || clientes.length === 0) {
       console.log(chalk.red('No hay clientes registrados.'));
       return;
@@ -99,9 +99,10 @@ async function crearPropuestaCLI() {
       titulo,
       descripcion,
       precio,
-      fechaLimite,
+      fechaLimite: new Date(fechaLimite), 
       condiciones,
     });
+    
 
     console.log(chalk.green('✅ Propuesta creada con éxito.'));
     console.log(`Número: ${propuesta.numero}`);
@@ -127,7 +128,8 @@ async function listarPropuestasCLI() {
       },
     ]);
 
-    const propuestas = await ServicioPropuesta.listarPropuestas({ estado });
+    const { propuestas, paginacion } = await ServicioPropuesta.listarPropuestas(estado)
+
     if (propuestas.length === 0) {
       console.log(chalk.yellow('No hay propuestas registradas.'));
       return;
@@ -148,7 +150,7 @@ async function listarPropuestasCLI() {
 
 async function cambiarEstadoCLI() {
   try {
-    const propuestas = await ServicioPropuesta.listarPropuestas({ estado: 'Pendiente' });
+    const { propuestas } = await ServicioPropuesta.listarPropuestas({ estado: 'Pendiente', limite: 100 });
     if (propuestas.length === 0) {
       console.log(chalk.yellow('No hay propuestas pendientes.'));
       return;
