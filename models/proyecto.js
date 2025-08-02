@@ -61,23 +61,26 @@ export class Proyecto {
     this.avances = Array.isArray(avances) ? avances : []
     this.fechaCreacion = new Date()
   }
+
   static crearDesdePropuesta(propuesta, clienteId) {
     if (!propuesta || !clienteId) {
-      throw new Error("Datos insuficientes para crear un proyecto desde la propuesta.");
+      throw new Error("Datos insuficientes para crear un proyecto desde la propuesta.")
     }
-  
+
+    // Asegurar que clienteId sea string para el constructor
+    const clienteIdString = clienteId.toString()
+
     return new Proyecto({
-      clienteId: new ObjectId(clienteId),
-      propuestaId: propuesta._id,
+      clienteId: clienteIdString,
+      propuestaId: propuesta._id.toString(),
       nombre: propuesta.titulo,
       descripcion: propuesta.descripcion || "",
-      fechaInicio: new Date(), // Usa hoy como fecha de inicio
+      fechaInicio: new Date(),
+      fechaFin: propuesta.fechaLimite ? new Date(propuesta.fechaLimite) : null,
       valor: propuesta.precio || 0,
       estado: "Activo",
-      // Los campos restantes como contratoId, fechaFin, avances, etc., se mantienen con sus valores por defecto
-    });
+    })
   }
-  
 
   #generarCodigoProyecto() {
     const timestamp = Date.now().toString()
@@ -127,7 +130,6 @@ export class Proyecto {
       codigoProyecto: this.codigoProyecto,
       avances: this.avances || [],
       fechaCreacion: this.fechaCreacion || new Date(),
-    };
+    }
   }
-  
 }
