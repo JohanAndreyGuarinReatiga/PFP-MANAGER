@@ -13,7 +13,7 @@ export class Entregable {
     if (!ObjectId.isValid(proyectoId)) {
       throw new Error("El ID del proyecto no es válido.");
     }
-    const estadosValidos = ["Pendiente", "Entregado", "Aprobado", "Rechazado"];
+    const estadosValidos = ["Pendiente", "En progreso", "Entregado", "Aprobado", "Rechazado"];
     if (!estadosValidos.includes(estado)) {
       throw new Error(`Estado inválido. Valores permitidos: ${estadosValidos.join(", ")}`);
     }
@@ -33,7 +33,7 @@ export class Entregable {
   }
 
   cambiarEstado(nuevoEstado) {
-    const estadosValidos = ["Pendiente", "Entregado", "Aprobado", "Rechazado"];
+    const estadosValidos = ["Pendiente", "En progreso", "Entregado", "Aprobado", "Rechazado"];
     if (!estadosValidos.includes(nuevoEstado)) {
       throw new Error(`Estado inválido: ${nuevoEstado}`);
     }
