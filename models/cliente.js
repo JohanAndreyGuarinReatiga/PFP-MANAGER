@@ -35,7 +35,7 @@ export class Cliente {
 
     toDBObject() {
         return{
-            id: this._id,
+            _id: this._id,
             nombre: this.nombre,
             correo: this.correo,
             telefono: this.telefono,
