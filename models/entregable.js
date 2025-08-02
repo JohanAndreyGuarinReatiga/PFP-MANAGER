@@ -32,19 +32,6 @@ export class Entregable {
     this.fechaEntrega = fechaEntrega ? new Date(fechaEntrega) : null;
   }
 
-  cambiarEstado(nuevoEstado) {
-    const estadosValidos = ["Pendiente", "En progreso", "Entregado", "Aprobado", "Rechazado"];
-    if (!estadosValidos.includes(nuevoEstado)) {
-      throw new Error(`Estado inválido: ${nuevoEstado}`);
-    }
-
-    if (nuevoEstado === "Entregado") {
-      this.fechaEntrega = new Date();
-    }
-
-    this.estado = nuevoEstado;
-  }
-
   toDBObject() {
     return {
       _id: this._id,
