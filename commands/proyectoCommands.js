@@ -1,205 +1,263 @@
-import inquirer from "inquirer"
-import chalk from "chalk"
-import { MongoClient, ObjectId } from "mongodb"
-import { ServicioProyecto } from "../services/servicioProyecto.js"
-import { ServicioPropuesta } from "../services/servicioPropuesta.js"
+// commands/proyectoCommands.js
 
-// Función para formatear fecha
+import inquirer from 'inquirer';
+import chalk from 'chalk';
+import dayjs from 'dayjs';
+import { ProyectoService } from '../services/servicioProyecto.js';
+import { ServicioPropuesta } from '../services/servicioPropuesta.js';
+import { ServicioCliente } from '../services/servicioCliente.js'; 
+function mostrarEstadoConColor(estado) {
+  const colores = {
+    Activo: chalk.green,
+    Pausado: chalk.yellow,
+    Finalizado: chalk.blue,
+    Cancelado: chalk.red,
+  };
+  return colores[estado]?.(estado) || estado;
+}
+
 function formatearFecha(fecha) {
-  return new Date(fecha).toLocaleDateString("es-ES", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  })
+  return dayjs(fecha).format('DD/MM/YYYY');
 }
 
-// Función para formatear precio
-function formatearPrecio(precio) {
-  return `$${precio.toLocaleString()}`
+export async function menuProyectos() {
+  let salir = false;
+  while (!salir) {
+    const { accion } = await inquirer.prompt({
+      type: 'list',
+      name: 'accion',
+      message: '📊 Gestión de Proyectos',
+      choices: [
+        { name: '➕ Crear proyecto manualmente', value: 'crearManual' },
+        { name: '➕ Crear proyecto desde propuesta', value: 'crearDesdePropuesta' },
+        { name: '📄 Ver proyectos', value: 'listar' },
+        { name: '✏️ Modificar proyecto', value: 'modificar' },
+        { name: '📈 Registrar avance', value: 'avanzar' },
+        { name: '⬅️ Volver al menú principal', value: 'salir' },
+      ],
+    });
+
+    switch (accion) {
+      case 'crearManual':
+        await crearProyectoManualCLI();
+        break;
+      case 'crearDesdePropuesta':
+        await crearProyectoDesdePropuestaCLI();
+        break;
+      case 'listar':
+        await listarProyectosCLI();
+        break;
+      case 'modificar':
+        await modificarProyectoCLI();
+        break;
+      case 'avanzar':
+        await registrarAvanceCLI();
+        break;
+      case 'salir':
+        salir = true;
+        break;
+    }
+  }
 }
 
-export async function crearProyecto() {
-  const cliente = new MongoClient(process.env.MONGO_URI)
-
+async function crearProyectoManualCLI() {
   try {
-    await cliente.connect()
-    const db = cliente.db(process.env.DB_NAME)
-    const servicioProyecto = new ServicioProyecto(db)
-
-    console.log(chalk.blue.bold("CREAR PROYECTO MANUALMENTE"))
-
-    const respuestas = await inquirer.prompt([
-      {
-        type: "input",
-        name: "nombre",
-        message: "Nombre del proyecto:",
-        validate: (input) => input.trim().length > 0 || "El nombre es requerido",
-      },
-      {
-        type: "input",
-        name: "descripcion",
-        message: "Descripción del proyecto:",
-      },
-      {
-        type: "input",
-        name: "fechaInicio",
-        message: "Fecha de inicio (YYYY-MM-DD):",
-        default: new Date().toISOString().split("T")[0],
-        validate: (input) => {
-          const fecha = new Date(input)
-          return !isNaN(fecha.getTime()) || "Formato de fecha inválido"
-        },
-      },
-      {
-        type: "input",
-        name: "fechaFin",
-        message: "Fecha de fin (YYYY-MM-DD) [opcional]:",
-        validate: (input) => {
-          if (!input.trim()) return true
-          const fecha = new Date(input)
-          return !isNaN(fecha.getTime()) || "Formato de fecha inválido"
-        },
-      },
-      {
-        type: "number",
-        name: "valor",
-        message: "Valor del proyecto:",
-        default: 0,
-        validate: (input) => input >= 0 || "El valor debe ser mayor o igual a 0",
-      },
-      {
-        type: "input",
-        name: "clienteId",
-        message: "ID del cliente asociado:",
-        validate: (input) => input.trim().length === 24 || "ID de cliente inválido (debe tener 24 caracteres)",
-      },
-    ])
-
-    // Limpiar fecha fin si está vacía
-    if (!respuestas.fechaFin.trim()) {
-      respuestas.fechaFin = null
+    const clientes = await ServicioCliente.obtenerClientes();
+    if (!clientes || clientes.length === 0) {
+      console.log(chalk.red('No hay clientes registrados.'));
+      return;
     }
 
-    const nuevoProyecto = await servicioProyecto.crearProyecto(respuestas)
+    const respuestas = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'clienteId',
+        message: 'Selecciona el cliente:',
+        choices: clientes.map(c => ({ name: `${c.nombre}`, value: c._id.toString() })),
+      },
+      { type: 'input', name: 'nombre', message: 'Nombre del proyecto:', validate: v => v.trim() !== '' },
+      { type: 'input', name: 'descripcion', message: 'Descripción:' },
+      {
+        type: 'input',
+        name: 'fechaInicio',
+        message: 'Fecha inicio (YYYY-MM-DD):',
+        default: dayjs().format('YYYY-MM-DD'),
+        validate: v => dayjs(v, 'YYYY-MM-DD', true).isValid() || 'Formato inválido',
+      },
+      {
+        type: 'input',
+        name: 'fechaFin',
+        message: 'Fecha fin (YYYY-MM-DD) [opcional]:',
+        validate: v => !v || dayjs(v, 'YYYY-MM-DD', true).isValid() || 'Formato inválido',
+      },
+      {
+        type: 'number',
+        name: 'valor',
+        message: 'Valor:',
+        default: 0,
+        validate: v => v >= 0 || 'Debe ser ≥ 0',
+      },
+    ]);
 
-    console.log(chalk.green.bold("PROYECTO CREADO"))
-    console.log(chalk.cyan("Código:"), chalk.white.bold(nuevoProyecto.codigoProyecto))
-    console.log(chalk.cyan("Nombre:"), chalk.white(nuevoProyecto.nombre))
-    console.log(chalk.cyan("Estado:"), mostrarEstadoConColor(nuevoProyecto.estado))
-    console.log(chalk.cyan("Valor:"), chalk.white(`$${nuevoProyecto.valor}`))
-  } catch (error) {
-    console.log(chalk.red.bold("ERROR AL CREAR"))
-    console.log(chalk.red(error.message))
-  } finally {
-    await cliente.close()
+    const data = {
+      clienteId: respuestas.clienteId,
+      nombre: respuestas.nombre,
+      descripcion: respuestas.descripcion,
+      fechaInicio: new Date(respuestas.fechaInicio),
+      fechaFin: respuestas.fechaFin ? new Date(respuestas.fechaFin) : null,
+      valor: respuestas.valor,
+    };
+
+    const proyecto = await ProyectoService.crearProyecto(data);
+    console.log(chalk.green('✅ Proyecto creado:'));
+    console.log(`Código: ${chalk.white.bold(proyecto.codigoProyecto)}`);
+    console.log(`Estado: ${mostrarEstadoConColor(proyecto.estado)}`);
+  } catch (err) {
+    console.error(chalk.red('❌ Error al crear proyecto:'), err.message);
   }
 }
 
-export async function crearProyectoPorPropuesta() {
-  const cliente = new MongoClient(process.env.MONGO_URI)
-
+async function crearProyectoDesdePropuestaCLI() {
   try {
-    await cliente.connect()
-    const db = cliente.db(process.env.DB_NAME)
-    const servicioProyecto = new ServicioProyecto(db)
+    const propuestas = await ServicioPropuesta.listarPropuestasPendientes();
+    if (!propuestas.length) {
+      console.log(chalk.yellow('⚠️ No hay propuestas pendientes.'));
+      return;
+    }
 
-    console.log(chalk.blue.bold("CREAR PROYECTO DESDE PROPUESTA"))
+    const { propuestaId } = await inquirer.prompt({
+      type: 'list',
+      name: 'propuestaId',
+      message: 'Selecciona propuesta aceptada:',
+      choices: propuestas.map(p => ({
+        name: `${p.numero} – ${p.titulo}`,
+        value: p._id.toString(),
+      })),
+    });
 
-    const respuestas = await inquirer.prompt([
-      {
-        type: "input",
-        name: "propuestaId",
-        message: "ID de la propuesta aceptada:",
-        validate: (input) => input.trim().length === 24 || "ID de propuesta inválido (debe tener 24 caracteres)",
-      },
-      {
-        type: "input",
-        name: "clienteId",
-        message: "ID del cliente asociado:",
-        validate: (input) => input.trim().length === 24 || "ID de cliente inválido (debe tener 24 caracteres)",
-      },
-    ])
-
-    const nuevoProyecto = await servicioProyecto.crearProyectoPorPropuesta(respuestas.propuestaId, respuestas.clienteId)
-
-    console.log(chalk.green.bold("PROYECTO CREADO"))
-    console.log(chalk.cyan("Código:"), chalk.white.bold(nuevoProyecto.codigoProyecto))
-    console.log(chalk.cyan("Nombre:"), chalk.white(nuevoProyecto.nombre))
-    console.log(chalk.cyan("Estado:"), mostrarEstadoConColor(nuevoProyecto.estado))
-    console.log(chalk.cyan("Valor:"), chalk.white(`$${nuevoProyecto.valor}`))
-    console.log(chalk.cyan("Heredado de propuesta:"), chalk.yellow("Sí"))
-  } catch (error) {
-    console.log(chalk.red.bold("ERROR AL CREAR EL PROYECTO"))
-    console.log(chalk.red(error.message))
-  } finally {
-    await cliente.close()
+    const proyecto = await ProyectoService.crearProyectoDesdePropuesta(propuestaId);
+    console.log(chalk.green('✅ Proyecto creado desde propuesta:'));
+    console.log(`Código: ${chalk.white.bold(proyecto.codigoProyecto)}`);
+    console.log(`Estado: ${mostrarEstadoConColor(proyecto.estado)}`);
+  } catch (err) {
+    console.error(chalk.red('❌ Error al crear desde propuesta:'), err.message);
   }
 }
 
-export async function generarContrato() {
-  const cliente = new MongoClient(process.env.MONGO_URI)
-
+async function listarProyectosCLI() {
   try {
-    await cliente.connect()
-    const db = cliente.db(process.env.DB_NAME)
-    const servicioProyecto = new ServicioProyecto(db)
+    const { clienteId, estado } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'clienteId',
+        message: 'Filtrar por cliente:',
+        choices: [{ name: 'Todos', value: 'todos' }, ...(await ServicioCliente.obtenerClientes()).map(c => ({
+          name: c.nombre, value: c._id.toString()
+        }))],
+      },
+      {
+        type: 'list',
+        name: 'estado',
+        message: 'Filtrar por estado:',
+        choices: [
+          { name: 'Todos', value: 'todos' },
+          ...['Activo','Pausado','Finalizado','Cancelado'].map(e => ({ name: e, value: e })),
+        ],
+      },
+    ]);
 
-    console.log(chalk.blue.bold("GENERAR CONTRATO PARA PROYECTO"))
+    const proyectos = await ProyectoService.listarProyectos({ clienteId , estado });
+    if (!proyectos.length) {
+      console.log(chalk.yellow('⚠️ No se encontraron proyectos.'));
+      return;
+    }
+
+    console.log(chalk.blue('📋 Proyectos:'));
+    proyectos.forEach(p => {
+      const progreso = p.avances.length 
+        ? Math.round((p.avances.filter(a => a.descripcion).length / p.avances.length) * 100) 
+        : 0;
+      console.log(
+        `${chalk.white.bold(p.codigoProyecto)} | ${p.nombre} | ${mostrarEstadoConColor(p.estado)} | ` +
+        `${formatearFecha(p.fechaInicio)} - ${p.fechaFin ? formatearFecha(p.fechaFin) : '---'} | ` +
+        `Progreso: ${progreso}%`
+      );
+    });
+  } catch (err) {
+    console.error(chalk.red('Error al listar proyectos:'), err.message);
+  }
+}
+
+async function modificarProyectoCLI() {
+  try {
+    const proyectos = await ProyectoService.listarProyectos();
+    if (!proyectos.length) {
+      console.log(chalk.yellow('⚠️ No hay proyectos para modificar.'));
+      return;
+    }
+
+    const { proyectoId } = await inquirer.prompt({
+      type: 'list',
+      name: 'proyectoId',
+      message: 'Selecciona proyecto:',
+      choices: proyectos.map(p => ({ name: `${p.codigoProyecto} – ${p.nombre}`, value: p._id.toString() })),
+    });
 
     const respuestas = await inquirer.prompt([
+      { type: 'input', name: 'descripcion', message: 'Nueva descripción (enter=sin cambio):' },
       {
-        type: "input",
-        name: "proyectoId",
-        message: "ID del proyecto:",
-        validate: (input) => input.trim().length === 24 || "ID de proyecto inválido (debe tener 24 caracteres)",
+        type: 'input', name: 'fechaInicio', message: 'Nueva fecha inicio (YYYY-MM-DD):',
+        validate: v => !v || dayjs(v,'YYYY-MM-DD',true).isValid() || 'Formato inválido'
       },
       {
-        type: "editor",
-        name: "condiciones",
-        message: "Condiciones del contrato:",
-        validate: (input) => input.trim().length >= 10 || "Las condiciones deben tener al menos 10 caracteres",
+        type: 'input', name: 'fechaFin', message: 'Nueva fecha fin (YYYY-MM-DD):',
+        validate: v => !v || dayjs(v,'YYYY-MM-DD',true).isValid() || 'Formato inválido'
       },
       {
-        type: "input",
-        name: "fechaInicio",
-        message: "Fecha de inicio del contrato (YYYY-MM-DD):",
-        default: new Date().toISOString().split("T")[0],
-        validate: (input) => {
-          const fecha = new Date(input)
-          return !isNaN(fecha.getTime()) || "Formato de fecha inválido"
-        },
+        type: 'number', name: 'valor', message: 'Nuevo valor (0=sin cambio):',
+        validate: v => v >= 0 || 'Debe ser ≥ 0'
       },
       {
-        type: "input",
-        name: "fechaFin",
-        message: "Fecha de fin del contrato (YYYY-MM-DD):",
-        validate: (input) => {
-          const fecha = new Date(input)
-          return !isNaN(fecha.getTime()) || "Formato de fecha inválido"
-        },
+        type: 'list', name: 'estado', message: 'Nuevo estado:',
+        choices: ['Activo','Pausado','Finalizado','Cancelado','(mantener)'],
       },
-      {
-        type: "number",
-        name: "valorTotal",
-        message: "Valor total del contrato:",
-        validate: (input) => input > 0 || "El valor debe ser mayor a 0",
-      },
-      {
-        type: "input",
-        name: "terminosPago",
-        message: "Términos de pago:",
-        validate: (input) => input.trim().length >= 5 || "Los términos de pago son requeridos",
-      },
-    ])
+    ]);
 
-    const nuevoContrato = await servicioProyecto.generarContrato(respuestas)
+    const cambios = {};
+    if (respuestas.descripcion) cambios.descripcion = respuestas.descripcion;
+    if (respuestas.fechaInicio) cambios.fechaInicio = new Date(respuestas.fechaInicio);
+    if (respuestas.fechaFin) cambios.fechaFin = new Date(respuestas.fechaFin);
+    if (respuestas.valor > 0) cambios.valor = respuestas.valor;
+    if (respuestas.estado && respuestas.estado !== '(mantener)') cambios.estado = respuestas.estado;
 
-    console.log(chalk.green.bold("CONTRATO GENERADO"))
-    console.log(chalk.cyan("Número:"), chalk.white.bold(nuevoContrato.numero))
-    console.log(chalk.cyan("Estado:"), chalk.yellow(nuevoContrato.estado))
-    console.log(chalk.cyan("Valor Total:"), chalk.white(`$${nuevoContrato.valorTotal}`))
-    console.log(chalk.cyan("Términos de Pago:"), chalk.white(nuevoContrato.terminosPago))
-  } catch (error) {
-    console.error(chalk.red("Error al crear la propuesta:"), error)
+    const res = await ProyectoService.actualizarProyecto(proyectoId, cambios);
+    console.log(res.actualizado ? chalk.green('✅ Proyecto actualizado.') : chalk.red('❌ No se actualizó.'));
+  } catch (err) {
+    console.error(chalk.red('❌ Error al modificar proyecto:'), err.message);
+  }
+}
+
+async function registrarAvanceCLI() {
+  try {
+    const proyectos = await ProyectoService.listarProyectos();
+    if (!proyectos.length) {
+      console.log(chalk.yellow('⚠️ No hay proyectos para avanzar.'));
+      return;
+    }
+
+    const { proyectoId, descripcion } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'proyectoId',
+        message: 'Selecciona proyecto:',
+        choices: proyectos.map(p => ({ name: `${p.codigoProyecto} – ${p.nombre}`, value: p._id.toString() })),
+      },
+      { type: 'input', name: 'descripcion', message: 'Descripción del avance:' },
+    ]);
+
+    const res = await ProyectoService.registrarAvance(proyectoId, descripcion);
+    console.log(res.avanceRegistrado ? chalk.green('✅ Avance registrado.') : chalk.red('❌ No registrado.'));
+  } catch (err) {
+    console.error(chalk.red('❌ Error al registrar avance:'), err.message);
   }
 }
