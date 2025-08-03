@@ -6,6 +6,9 @@ import dayjs from 'dayjs';
 import { ProyectoService } from '../services/servicioProyecto.js';
 import { ServicioPropuesta } from '../services/servicioPropuesta.js';
 import { ServicioCliente } from '../services/servicioCliente.js'; 
+
+// instancia para serviciocliente
+const servicioCliente = new ServicioCliente();
 function mostrarEstadoConColor(estado) {
   const colores = {
     Activo: chalk.green,
@@ -62,7 +65,7 @@ export async function menuProyectos() {
 
 async function crearProyectoManualCLI() {
   try {
-    const clientes = await ServicioCliente.obtenerClientes();
+    const clientes = await ServicioPropuesta.listarClientes();
     if (!clientes || clientes.length === 0) {
       console.log(chalk.red('No hay clientes registrados.'));
       return;
@@ -130,7 +133,7 @@ async function crearProyectoDesdePropuestaCLI() {
       name: 'propuestaId',
       message: 'Selecciona propuesta aceptada:',
       choices: propuestas.map(p => ({
-        name: `${p.numero} – ${p.titulo}`,
+        name: `${p.numero} – ${p.titulo} (${p.estado})`,
         value: p._id.toString(),
       })),
     });
@@ -146,12 +149,13 @@ async function crearProyectoDesdePropuestaCLI() {
 
 async function listarProyectosCLI() {
   try {
+    const clientes = await servicioCliente.obtenerClientes();
     const { clienteId, estado } = await inquirer.prompt([
       {
         type: 'list',
         name: 'clienteId',
         message: 'Filtrar por cliente:',
-        choices: [{ name: 'Todos', value: 'todos' }, ...(await ServicioCliente.obtenerClientes()).map(c => ({
+        choices: [{ name: 'Todos', value: 'todos' }, ...clientes.map(c => ({
           name: c.nombre, value: c._id.toString()
         }))],
       },
@@ -190,7 +194,8 @@ async function listarProyectosCLI() {
 
 async function modificarProyectoCLI() {
   try {
-    const proyectos = await ProyectoService.listarProyectos();
+    const servicioCliente = new ServicioCliente();
+    const proyectos = await ProyectoService.listarProyectos({clienteService: servicioCliente});
     if (!proyectos.length) {
       console.log(chalk.yellow('⚠️ No hay proyectos para modificar.'));
       return;
@@ -223,13 +228,21 @@ async function modificarProyectoCLI() {
       },
     ]);
 
-    const cambios = {};
+    const cambios = {
+      fechaActualizacion: new Date() // Campo requerido en muchos esquemas
+    };
+    
     if (respuestas.descripcion) cambios.descripcion = respuestas.descripcion;
-    if (respuestas.fechaInicio) cambios.fechaInicio = new Date(respuestas.fechaInicio);
-    if (respuestas.fechaFin) cambios.fechaFin = new Date(respuestas.fechaFin);
-    if (respuestas.valor > 0) cambios.valor = respuestas.valor;
+    if (respuestas.fechaInicio) {
+      const fecha = new Date(respuestas.fechaInicio);
+      if (isNaN(fecha.getTime())) throw new Error("Fecha inicio inválida");
+      cambios.fechaInicio = fecha;}
+    if (respuestas.fechaFin) {
+      const fecha = new Date(respuestas.fechaFin);
+      if (isNaN(fecha.getTime())) throw new Error("Fecha fin inválida");
+      cambios.fechaFin = fecha;}
+    if (respuestas.valor > 0) cambios.valor = new Double(respuestas.valor); // Asegura el tipo double
     if (respuestas.estado && respuestas.estado !== '(mantener)') cambios.estado = respuestas.estado;
-
     const res = await ProyectoService.actualizarProyecto(proyectoId, cambios);
     console.log(res.actualizado ? chalk.green('✅ Proyecto actualizado.') : chalk.red('❌ No se actualizó.'));
   } catch (err) {
