@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb"
+import { ObjectId, Double } from "mongodb"
 
 export class Propuesta {
   constructor({
@@ -64,19 +64,29 @@ export class Propuesta {
     return this.fechaLimite > new Date() && this.estado === "Pendiente"
   }
 
+  cambiarEstado(nuevoEstado) {
+    const estadosValidos = ["Pendiente", "Aceptada", "Rechazada"]
+    if (!estadosValidos.includes(nuevoEstado)) {
+      throw new Error(`El estado debe ser uno de: ${estadosValidos.join(", ")}`)
+    }
+
+    this.estado = nuevoEstado
+    this.fechaActualizacion = new Date()
+  }
+
   toDBObject() {
     return {
-      _id: this._id,
+      _id: new ObjectId(this._id),  // Convertir a ObjectId
       clienteId: this.clienteId,
       titulo: this.titulo,
       descripcion: this.descripcion,
-      precio: this.precio,
-      fechaLimite: this.fechaLimite,
+      precio: new Double(this.precio),  // Convertir a Double
+      fechaLimite: new Date(this.fechaLimite),  // Asegurar que sea Date
       condiciones: this.condiciones,
       estado: this.estado,
       numero: this.numero,
-      fechaCreacion: this.fechaCreacion,
-      fechaActualizacion: this.fechaActualizacion,
-    }
+      fechaCreacion: new Date(this.fechaCreacion),
+      fechaActualizacion: new Date(this.fechaActualizacion),
+    };
   }
 }

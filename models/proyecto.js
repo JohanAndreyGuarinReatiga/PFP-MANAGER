@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb"
+import { ObjectId, Double } from "mongodb"
 
 export class Proyecto {
   constructor({
@@ -62,6 +62,26 @@ export class Proyecto {
     this.fechaCreacion = new Date()
   }
 
+  static crearDesdePropuesta(propuesta, clienteId) {
+    if (!propuesta || !clienteId) {
+      throw new Error("Datos insuficientes para crear un proyecto desde la propuesta.")
+    }
+
+    // Asegurar que clienteId sea string para el constructor
+    const clienteIdString = clienteId.toString()
+
+    return new Proyecto({
+      clienteId: clienteIdString,
+      propuestaId: propuesta._id.toString(),
+      nombre: propuesta.titulo,
+      descripcion: propuesta.descripcion || "",
+      fechaInicio: new Date(),
+      fechaFin: propuesta.fechaLimite ? new Date(propuesta.fechaLimite) : null,
+      valor: propuesta.precio || 0,
+      estado: "Activo",
+    })
+  }
+
   #generarCodigoProyecto() {
     const timestamp = Date.now().toString()
     const random = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -98,19 +118,18 @@ export class Proyecto {
 
   toDBObject() {
     return {
-      _id: this._id,
       clienteId: this.clienteId,
-      propuestaId: this.propuestaId,
-      contratoId: this.contratoId,
+      propuestaId: this.propuestaId || null,
+      contratoId: this.contratoId || null,
       nombre: this.nombre,
-      descripcion: this.descripcion,
+      descripcion: this.descripcion || "",
       fechaInicio: this.fechaInicio,
-      fechaFin: this.fechaFin,
-      valor: this.valor,
+      fechaFin: this.fechaFin || null,
+      valor: new Double(this.valor),
       estado: this.estado,
       codigoProyecto: this.codigoProyecto,
-      avances: this.avances,
-      fechaCreacion: this.fechaCreacion,
+      avances: this.avances || [],
+      fechaCreacion: this.fechaCreacion || new Date(),
     }
   }
 }

@@ -1,6 +1,11 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
 import { menuGestionClientes } from "../commands/clientesCommands.js";
+import {menuPropuestas} from "../commands/propuestaCommands.js"
+import {menuProyectos} from "../commands/proyectoCommands.js"
+import {gestionarContratos} from "../commands/contratoCommands.js"
+import {gestionEntregablesCommand} from "../commands/entregableCommands.js"
+
 
 export async function mostrarMenuUsuario() {
     let salir = false;
@@ -32,19 +37,19 @@ export async function mostrarMenuUsuario() {
                 break;
 
             case "propuestas":
-                console.log(chalk.red("modulo no  implementada"));
+                await menuPropuestas()
                 break;
 
-            case "proyecto":
-                console.log(chalk.red("modulo proyecto no  implementada"));
+            case "proyectos":
+                await menuProyectos()
                 break;
 
             case "contratos":
-                console.log(chalk.red("modulo no  implementada"));
+                await gestionarContratos()
                 break;
 
             case "entregables":
-                console.log(chalk.red("modulo no  implementada"));
+                await gestionEntregablesCommand()
                 break;
 
             case "finanzas":

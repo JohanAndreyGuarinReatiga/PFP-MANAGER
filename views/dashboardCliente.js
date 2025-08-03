@@ -1,6 +1,7 @@
-import inquirer from "inquirer";
+import inquirer from "inquirer"; 
 import chalk from "chalk";
 import { buscarClientePorCorreo } from "../controllers/controllersCliente.js";
+import { ServicioCliente } from "../services/servicioCliente.js";
 
 export async function mostrarMenuCliente() {
   const { correo } = await inquirer.prompt([
@@ -12,7 +13,8 @@ export async function mostrarMenuCliente() {
     }
   ]);
 
-  const cliente = await buscarClientePorCorreo(correo);
+  const servicio = new ServicioCliente(); // ✅ Instanciar el servicio
+  const cliente = await buscarClientePorCorreo(servicio, correo); // ✅ Pasar instancia + correo
 
   if (!cliente) {
     console.log(chalk.red("\nNo se encontró un cliente con ese correo.\n"));
@@ -24,4 +26,3 @@ export async function mostrarMenuCliente() {
   console.log(chalk.cyan(`Empresa: ${cliente.empresa || "N/A"}`));
   console.log(chalk.cyan(`Correo: ${cliente.correo}`));
 }
-

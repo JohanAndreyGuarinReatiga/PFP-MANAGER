@@ -17,7 +17,8 @@ export async function mostrarMenuPrincipal() {
                 message: "Como deseas ingresar? ",
                 choices: [
                     { name: "Soy freelancer (usuario de PPF)", value: "freelancer" },
-                    { name: "Soy cliente", value: "cliente" }
+                    { name: "Soy cliente", value: "cliente" },
+                    {name: "Salir", value: "salir"}
                 ]
             }
         ]);
