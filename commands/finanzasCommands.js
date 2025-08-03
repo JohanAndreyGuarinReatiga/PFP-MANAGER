@@ -14,20 +14,24 @@ export async function menuFinanzas() {
                 name: "opcion",
                 message: "Que accion deseas hacer con tus finanzas?",
                 choices: [
-                    {name: "Ver balance financiero", value:"balance"},
                     {name: "Pagar egreso", value:"egreso"},
+                    {name: "Volver al menu principal", value:"salir"},
+                    {name: "Ver balance financiero", value:"balance"},
                     {name: "Volver al menu principal", value:"salir"}
                 ]
             }
         ])
 
         switch (key) {
-            case "balance":
-                console.log("funcion en construccion");
-                break;
             case "egreso":
                 console.log("funcion en construccion");
                 break
+            case "":
+                console.log("") 
+                break;
+            case "balance":
+                console.log("funcion en construccion");
+                break;
             case "salir":
                 salir = true;
                 break;
