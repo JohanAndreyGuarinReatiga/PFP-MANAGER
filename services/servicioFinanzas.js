@@ -29,5 +29,30 @@ export class ServicioFinanza {
           await session.endSession();
         }
       }
-    
+    static async registrarGasto({ proyectoId = null, descripcion, monto, fecha = new Date(), categoria = "otros"}){
+        const db = await connection();
+        const session = db.client.startSession();
+        const categoriasValidas = ["herramientas", "marketing", "oficina", "otros"];
+        if(!categoriasValidas.includes(categoria)){
+            throw new Error("categoria no valida, pruebe con:" + categoriasValidas.join(", "));
+        }
+        try{
+            await session.withTransaction(async()=>{
+                const egreso = new Finanza({proyectoId: proyectoId ? new ObjectId(proyectoId) : null,
+                    tipo: "egreso",
+                    descripcion,
+                    monto,
+                    fecha,
+                    categoria,
+                });
+                await db.collection(this.collection).insertOne(egreso.toDBObject(), { session });
+            })
+        }catch(error){
+            console.log("Error al registrar gasto", error.message)
+            throw new Error("no se pudo registrar el gasto" + error.message)
+        }finally{
+            await session.endSession();
+        }
+    }
+
 }
