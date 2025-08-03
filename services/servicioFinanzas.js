@@ -90,6 +90,51 @@ export class ServicioFinanza {
           resumen.balance = resumen.ingresos - resumen.egresos;
           return resumen;
         }
-
+    static async registrarPagoRecibido({ proyectoId, descripcion, monto, fecha = new Date(), categoria = "pago cliente" }) {
+        if (!proyectoId) throw new Error("El proyectoId es obligatorio para registrar un pago recibido");
+    
+        const db = await connection();
+        const session = db.client.startSession();
+    
+        try {
+            await session.withTransaction(async () => {
+            // verificacion de que ya haya un ingreso duplicado
+            const yaExiste = await db.collection(this.collection).findOne({
+                proyectoId: new ObjectId(proyectoId),
+                tipo: "ingreso",
+                descripcion,
+                monto,
+                fecha,
+            }, { session });
+    
+            if (yaExiste) {
+                throw new Error("Este pago ya fue registrado previamente");
+            }
+    
+            // Registrar ingreso
+            const ingreso = new Finanza({
+                proyectoId: new ObjectId(proyectoId),
+                tipo: "ingreso",
+                descripcion,
+                monto,
+                fecha,
+                categoria,
+            });
+            await db.collection(this.collection).insertOne(ingreso.toDBObject(), { session });
+    
+            // Actualizar estado de pago del proyecto
+            await db.collection("proyectos").updateOne(
+                { _id: new ObjectId(proyectoId) },
+                { $set: { estadoPago: "Pagado" } },
+                { session }
+            );
+            });
+        } catch (error) {
+            console.error("Error al registrar pago recibido:", error.message);
+            throw new Error("No se pudo registrar el pago recibido: " + error.message);
+        } finally {
+            await session.endSession();
+        }
+    }
 
 }
