@@ -160,7 +160,7 @@ export class ServicioPropuesta {
     const db = await connection()
     const propuestas = await db
       .collection(this.collection)
-      .find({ estado: "Pendiente" })
+      .find({ estado: "Aceptada" })
       .sort({ fechaCreacion: -1 })
       .toArray()
 

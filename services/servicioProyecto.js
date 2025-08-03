@@ -34,6 +34,7 @@ export class ProyectoService {
   // para actualizar datos
   static async actualizarProyecto(id, cambios) {
     const db = await connection()
+    console.log("Cambios recibidos:", JSON.stringify(cambios, null, 2));
     if (cambios.estado && !["Activo", "Pausado", "Finalizado", "Cancelado"].includes(cambios.estado)) {
       throw new Error("Estado invalido")
     }
