@@ -60,10 +60,10 @@ export async function menuPropuestas() {
 
 async function crearPropuestaCLI() {
   try {
-    const clientes = await ServicioPropuesta.listarClientes()
-    if (!clientes || clientes.length === 0) {
-      console.log(chalk.red("No hay clientes registrados."))
-      return
+    const clientes = await ServicioPropuesta.listarClientes();
+    if (!clientes?.length) {
+      console.log(chalk.red("No hay clientes registrados."));
+      return;
     }
 
     const { clienteId, titulo, descripcion, precio, fechaLimite, condiciones } = await inquirer.prompt([
@@ -73,7 +73,7 @@ async function crearPropuestaCLI() {
         message: "Selecciona el cliente:",
         choices: clientes.map((c) => ({
           name: `${c.nombre} (${c.empresa || "Sin empresa"})`,
-          value: c._id.toString(),
+          value: c._id,  // ObjectId directo
         })),
       },
       {
@@ -93,14 +93,15 @@ async function crearPropuestaCLI() {
         name: "precio",
         message: "Precio:",
         validate: (v) => v > 0 || "Debe ser mayor a 0",
+        filter: Number,  // Convierte a número
       },
       {
         type: "input",
         name: "fechaLimite",
         message: "Fecha límite (YYYY-MM-DD):",
         validate: (v) => {
-          const d = new Date(v)
-          return d > new Date() || "Debe ser una fecha futura"
+          const d = new Date(v);
+          return !isNaN(d.getTime()) && d > new Date() || "Fecha inválida o no futura";
         },
       },
       {
@@ -109,37 +110,28 @@ async function crearPropuestaCLI() {
         message: "Condiciones:",
         validate: (v) => v.trim() !== "" || "Las condiciones son obligatorias",
       },
-    ])
+    ]);
 
     const propuesta = await ServicioPropuesta.crearPropuesta({
       clienteId,
       titulo,
       descripcion,
-      precio,
+      precio: Number(precio),  // Asegura tipo double
       fechaLimite: new Date(fechaLimite),
       condiciones,
-    })
+    });
 
-    console.log(chalk.green("✅ Propuesta creada con éxito."))
-    console.log(`Número: ${propuesta.numero}`)
-    console.log(`Estado: ${mostrarEstado(propuesta.estado)}`)
-
-    await inquirer.prompt([
-      {
-        type: "input",
-        name: "continuar",
-        message: chalk.gray("Presiona ENTER para continuar..."),
-      },
-    ])
+    console.log(chalk.green("✅ Propuesta creada con éxito."));
+    console.log(`Número: ${propuesta.numero}`);
+    console.log(`Estado: ${mostrarEstado(propuesta.estado)}`);
   } catch (error) {
-    console.error(chalk.red("Error al crear la propuesta:"), error.message)
-    await inquirer.prompt([
-      {
-        type: "input",
-        name: "continuar",
-        message: chalk.gray("Presiona ENTER para continuar..."),
-      },
-    ])
+    console.error(chalk.red("Error al crear la propuesta:"), error.message);
+  } finally {
+    await inquirer.prompt([{
+      type: "input",
+      name: "continuar",
+      message: chalk.gray("Presiona ENTER para continuar..."),
+    }]);
   }
 }
 

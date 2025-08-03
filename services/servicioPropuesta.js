@@ -12,7 +12,8 @@ export class ServicioPropuesta {
       const db = await connection()
       const propuesta = new Propuesta(data)
 
-      console.log("propuesta a crear", propuesta.toDBObject()) // solo para ver tambien
+      console.log("Objeto completo:", propuesta);
+      console.log("Objeto a insertar:", JSON.stringify(propuesta.toDBObject(), null, 2));
 
       // CORRECCIÓN: Insertar usando toDBObject() que devuelve un objeto plano
       const resultado = await db.collection(this.collection).insertOne(propuesta.toDBObject())
