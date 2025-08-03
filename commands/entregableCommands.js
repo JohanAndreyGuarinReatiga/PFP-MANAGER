@@ -52,6 +52,13 @@ export async function gestionEntregablesCommand() {
       entregables.forEach(e => {
         console.log(`- ${chalk.cyan(e.titulo)} | Estado: ${e.estado} | Fecha límite: ${dayjs(e.fechaLimite).format('DD/MM/YYYY')}`);
       });
+      await inquirer.prompt([
+        {
+            type: "input",
+            name: "continuar",
+            message: "Presiona ENTER para volver al menú..."
+        }
+    ]);
       return;
     }
 

@@ -187,6 +187,13 @@ async function listarProyectosCLI() {
         `Progreso: ${progreso}%`
       );
     });
+    await inquirer.prompt([
+      {
+          type: "input",
+          name: "continuar",
+          message: "Presiona ENTER para volver al menú..."
+      }
+  ]);
   } catch (err) {
     console.error(chalk.red('Error al listar proyectos:'), err.message);
   }

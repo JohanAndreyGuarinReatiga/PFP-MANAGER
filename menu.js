@@ -7,17 +7,17 @@ export async function mostrarMenuPrincipal() {
     let salir = false;
 
     console.clear();
-    console.log(chalk.cyanBright.bold("\n === Bienvenidos a PFP Manager === \n"));
+    console.log(chalk.cyanBright.bold("\n === Bienvenido a PFP Manager === \n"));
 
     while (!salir) {
         const { tipoUsuario } = await inquirer.prompt([
             {
                 type: "list",
                 name: "tipoUsuario",
-                message: "Como deseas ingresar? ",
+                message: "Que deseas hacer? ",
                 choices: [
-                    { name: "Soy freelancer (usuario de PPF)", value: "freelancer" },
-                    { name: "Soy cliente", value: "cliente" },
+                    { name: "Ingresar como freelancer (usuario de PFP)", value: "freelancer" },
+                    { name: "Ingresar como cliente", value: "cliente" },
                     {name: "Salir", value: "salir"}
                 ]
             }
@@ -35,7 +35,7 @@ export async function mostrarMenuPrincipal() {
             case "salir":
                 salir = true;
                 console.log("Gracias por usar PFP MANAGER");
-                break;
+                process.exit(0);
         }
     }
 }

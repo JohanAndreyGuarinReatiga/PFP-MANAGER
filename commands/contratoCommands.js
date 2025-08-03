@@ -198,6 +198,13 @@ async function listarContratos() {
     contratos.forEach(c => {
       console.log(`${chalk.cyan(c.numero)} | Estado: ${c.estado} | Proyecto: ${c.proyectoId} | Valor: $${c.valorTotal}`);
     });
+    await inquirer.prompt([
+      {
+          type: "input",
+          name: "continuar",
+          message: "Presiona ENTER para volver al menú..."
+      }
+  ]);
 
   } catch (error) {
     console.error(chalk.red("⚠️ Error al listar contratos:"), error.message);
