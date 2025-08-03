@@ -21,6 +21,11 @@ export class Finanza {
     if (!(fecha instanceof Date) || isNaN(fecha.getTime())) {
       throw new Error("La fecha debe ser una fecha válida");
     }
+    
+    if (!["ingreso", "egreso"].includes(tipo)) {
+      throw new Error("El tipo debe ser 'ingreso' o 'egreso'");
+    }
+    
 
     this._id = new ObjectId();
     this.proyectoId = proyectoId ? new ObjectId(proyectoId) : null;

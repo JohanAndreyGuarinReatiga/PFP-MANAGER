@@ -5,7 +5,7 @@ import {menuPropuestas} from "../commands/propuestaCommands.js"
 import {menuProyectos} from "../commands/proyectoCommands.js"
 import {gestionarContratos} from "../commands/contratoCommands.js"
 import {gestionEntregablesCommand} from "../commands/entregableCommands.js"
-
+import {menuFinanzas} from "../commands/finanzasCommands.js"
 
 export async function mostrarMenuUsuario() {
     let salir = false;
@@ -53,7 +53,7 @@ export async function mostrarMenuUsuario() {
                 break;
 
             case "finanzas":
-                console.log(chalk.red("modulo no  implementada"));
+                await menuFinanzas()
                 break;
 
             case "salir":

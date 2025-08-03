@@ -150,11 +150,11 @@ const schemas = {
           description: "Debe ser ingreso o egreso",
         },
         descripcion: { bsonType: "string" },
-        monto: { bsonType: "double", minimum: 0.01 },
+        monto: { bsonType: ["double", "int"], minimum: 0.01 },
         fecha: { bsonType: "date" },
         categoria: {
           bsonType: "string",
-          description: "Categoría financiera (otros, herramientas, etc.)",
+          enum: ["herramientas", "marketing", "oficina", "otros", "proyecto", "cliente", "bono", "pago cliente"]
         },
       },
     },
