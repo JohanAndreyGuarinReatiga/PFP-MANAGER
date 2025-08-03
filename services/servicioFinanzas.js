@@ -3,94 +3,138 @@ import { Finanza } from "../models/finanza.js";
 import { ObjectId } from "mongodb";
 
 export class ServicioFinanza {
-    constructor() {
-        this.ready = connection().then((db) => {
-            this.db = db;
-            this.collection = db.collection("Finanzas")
-        })
+    static collection = "finanzas";
+
+    static async registrarIngreso({ proyectoId = null, descripcion, monto, fecha = new Date(), categoria = "otros" }) {
+        const db = await connection();
+        const session = db.client.startSession();
+    
+        try {
+          await session.withTransaction(async () => {
+            const ingreso = new Finanza({
+              proyectoId: proyectoId ? new ObjectId(proyectoId) : null,
+              tipo: "ingreso",
+              descripcion,
+              monto,
+              fecha,
+              categoria,
+            });
+    
+            await db.collection(this.collection).insertOne(ingreso.toDBObject(), { session });
+          });
+        } catch (error) {
+          console.error("Error al registrar ingreso:", error.message);
+          throw new Error("No se pudo registrar el ingreso: " + error.message);
+        } finally {
+          await session.endSession();
+        }
+      }
+    static async registrarGasto({ proyectoId = null, descripcion, monto, fecha = new Date(), categoria = "otros"}){
+        const db = await connection();
+        const session = db.client.startSession();
+        const categoriasValidas = ["herramientas", "marketing", "oficina", "otros"];
+        if(!categoriasValidas.includes(categoria)){
+            throw new Error("categoria no valida, pruebe con:" + categoriasValidas.join(", "));
+        }
+        try{
+            await session.withTransaction(async()=>{
+                const egreso = new Finanza({proyectoId: proyectoId ? new ObjectId(proyectoId) : null,
+                    tipo: "egreso",
+                    descripcion,
+                    monto,
+                    fecha,
+                    categoria,
+                });
+                await db.collection(this.collection).insertOne(egreso.toDBObject(), { session });
+            })
+        }catch(error){
+            console.log("Error al registrar gasto", error.message)
+            throw new Error("no se pudo registrar el gasto" + error.message)
+        }finally{
+            await session.endSession();
+        }
     }
+    static async consultarBalance({desde = null, hasta = null, clienteId = null, proyectoId = null}){
+        const db = await connection();
+        const match = {};
 
-    async esperarDB() {
-        if (!this.db) await this.ready;
-    }
+        if (proyectoId)match.proyectoId = new ObjectId(proyectoId);
+        if(desde || hasta){ match.fecha = {}
+            if (desde) match.fecha.$gte = new Date(desde)
+            if (hasta) match.fecha.$lte = new Date(hasta)    
+        }
 
-    // guarda un ingreso o egreso.
-    async registrarTransaccion(data) {
-        await this.esperarDB();
-        const finanza = new Finanza(data);
-        await this.collection.insertOne(finanza.toDBObject());
-        return finanza;
-    }
-
-    // devuelve todas las transacciones ordenadas por fecha
-    async obtenerTransaccionesPorProyecto(proyectoId) {
-        await this.esperarDB();
-        return await this.collection
-            .find({ proyectoId: new ObjectId(proyectoId) })
-            .sort({ fecha: 1 })
-            .toArray();
-    }
-
-    // suma los ingresos y egresos y calcula el balance total
-    async obtenerBalancePorProyecto(proyectoId) {
-        await this.esperarDB();
-        const transacciones = await this.collection.find({ proyectoId: new ObjectId(proyectoId) }).toArray();
-
-        let totalIngresos = 0;
-        let totalEgresos = 0;
-
-        for (const t of transacciones) {
-            if (t.tipo === "ingreso") {
-                totalIngresos += t.monto;
-            } else if (t.tipo === "egreso") {
-                totalEgresos += t.monto;
+        if (clienteId) {
+            const proyectosCliente = await db.collection("proyectos").find({ clienteId: new ObjectId(clienteId) }, { projection: { _id: 1 } }).toArray();
+            const ids = proyectosCliente.map(p => p._id);
+            match.proyectoId = { $in: ids };
+          }
+      
+          const pipeline = [
+            { $match: match },
+            {
+              $group: {
+                _id: "$tipo",
+                total: { $sum: "$monto" },
+              },
+            },
+          ];
+      
+          const resultados = await db.collection(this.collection).aggregate(pipeline).toArray();
+      
+          const resumen = { ingresos: 0, egresos: 0, balance: 0 };
+          for (const r of resultados) {
+            if (r._id === "ingreso") resumen.ingresos = r.total;
+            if (r._id === "egreso") resumen.egresos = r.total;
+          }
+          resumen.balance = resumen.ingresos - resumen.egresos;
+          return resumen;
+        }
+    static async registrarPagoRecibido({ proyectoId, descripcion, monto, fecha = new Date(), categoria = "pago cliente" }) {
+        if (!proyectoId) throw new Error("El proyectoId es obligatorio para registrar un pago recibido");
+    
+        const db = await connection();
+        const session = db.client.startSession();
+    
+        try {
+            await session.withTransaction(async () => {
+            // verificacion de que ya haya un ingreso duplicado
+            const yaExiste = await db.collection(this.collection).findOne({
+                proyectoId: new ObjectId(proyectoId),
+                tipo: "ingreso",
+                descripcion,
+                monto,
+                fecha,
+            }, { session });
+    
+            if (yaExiste) {
+                throw new Error("Este pago ya fue registrado previamente");
             }
-        }
-
-        return {
-            totalIngresos,
-            totalEgresos,
-            balance: totalIngresos - totalEgresos
+    
+            // Registrar ingreso
+            const ingreso = new Finanza({
+                proyectoId: new ObjectId(proyectoId),
+                tipo: "ingreso",
+                descripcion,
+                monto,
+                fecha,
+                categoria,
+            });
+            await db.collection(this.collection).insertOne(ingreso.toDBObject(), { session });
+    
+            // Actualizar estado de pago del proyecto
+            await db.collection("proyectos").updateOne(
+                { _id: new ObjectId(proyectoId) },
+                { $set: { estadoPago: "Pagado" } },
+                { session }
+            );
+            });
+        } catch (error) {
+            console.error("Error al registrar pago recibido:", error.message);
+            throw new Error("No se pudo registrar el pago recibido: " + error.message);
+        } finally {
+            await session.endSession();
         }
     }
 
-    async obtenerBalanceMensualPorProyecto (proyectoId) {
-        await this.esperarDB();
-
-        const pipeline =[
-            {$match: {proyectoId: new ObjectId(proyectoId)}},
-            {
-                $group: {
-                    _id: {
-                        mes: {$month: "$fecha"},
-                        anio: {$year: "$fecha"},
-                        tipo: "$tipo"
-                    },
-                    total: {$sum: "$monto"}
-                }
-            },
-            {
-                $group:{
-                    _id: {mes: "$_id.mes", anio: "$_id.anio"},
-                    ingresos: {
-                        $sum: {
-                            $cond: [{ $eq: ["$_id.tipo","egreso"]}, "$total", 0]
-                        }
-                    }
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    mes: "$_id.mes",
-                    anio:"$_id.anio",
-                    ingresos: 1,
-                    egresso: 1,
-                    balance: {$subtract:["$ingresos","$egresos"]}
-                }
-            },{$sort : {anio: 1, mes: 1}}
-        ];
-
-        return await this.collection.aggregate(pipeline).toArray();
-    }
 }

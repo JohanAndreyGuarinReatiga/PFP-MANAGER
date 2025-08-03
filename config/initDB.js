@@ -142,15 +142,20 @@ const schemas = {
   finanzas: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["proyectoId", "tipo", "descripcion", "monto"],
+      required: ["tipo", "descripcion", "monto", "fecha", "categoria"],
       properties: {
-        proyectoId: { bsonType: "objectId" },
+        proyectoId: { bsonType: ["objectId", "null"] },
         tipo: {
           enum: ["ingreso", "egreso"],
+          description: "Debe ser ingreso o egreso",
         },
         descripcion: { bsonType: "string" },
-        monto: { bsonType: "double", minimum: 0 },
+        monto: { bsonType: ["double", "int"], minimum: 0.01 },
         fecha: { bsonType: "date" },
+        categoria: {
+          bsonType: "string",
+          enum: ["herramientas", "marketing", "oficina", "otros", "proyecto", "cliente", "bono", "pago cliente"]
+        },
       },
     },
   },
