@@ -54,5 +54,42 @@ export class ServicioFinanza {
             await session.endSession();
         }
     }
+    static async consultarBalance({desde = null, hasta = null, clienteId = null, proyectoId = null}){
+        const db = await connection();
+        const match = {};
+
+        if (proyectoId)match.proyectoId = new ObjectId(proyectoId);
+        if(desde || hasta){ match.fecha = {}
+            if (desde) match.fecha.$gte = new Date(desde)
+            if (hasta) match.fecha.$lte = new Date(hasta)    
+        }
+
+        if (clienteId) {
+            const proyectosCliente = await db.collection("proyectos").find({ clienteId: new ObjectId(clienteId) }, { projection: { _id: 1 } }).toArray();
+            const ids = proyectosCliente.map(p => p._id);
+            match.proyectoId = { $in: ids };
+          }
+      
+          const pipeline = [
+            { $match: match },
+            {
+              $group: {
+                _id: "$tipo",
+                total: { $sum: "$monto" },
+              },
+            },
+          ];
+      
+          const resultados = await db.collection(this.collection).aggregate(pipeline).toArray();
+      
+          const resumen = { ingresos: 0, egresos: 0, balance: 0 };
+          for (const r of resultados) {
+            if (r._id === "ingreso") resumen.ingresos = r.total;
+            if (r._id === "egreso") resumen.egresos = r.total;
+          }
+          resumen.balance = resumen.ingresos - resumen.egresos;
+          return resumen;
+        }
+
 
 }
