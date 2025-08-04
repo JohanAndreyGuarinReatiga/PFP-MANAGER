@@ -1,5 +1,5 @@
 // initDB.js
-import { connection } from "./db.js"
+import { connection } from "../config/db.js"
 
 const schemas = {
   clientes: {
