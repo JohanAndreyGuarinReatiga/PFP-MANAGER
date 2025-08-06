@@ -14,12 +14,38 @@ export async function gestionEntregablesCommand() {
         name: 'accion',
         message: '¿Qué deseas hacer con los entregables?',
         choices: [
+          { name: '📄 Crear entregables', value: 'crear' },
           { name: '📄 Listar entregables por proyecto', value: 'listar' },
           { name: '✏️ Cambiar estado de un entregable', value: 'estado' },
+          { name: '📄 Ver historial de cambio entregables ', value: 'historial' },
           { name: '🗑️ Eliminar un entregable', value: 'eliminar' },
         ],
       },
     ]);
+
+    if (accion === 'crear') {
+      const { respuestas } = await inquirer.prompt([
+        { type: "input", name: "proyectoId", message: "id del proyecto" },
+        { type: "input", name: "titulo", message: "titulo del entregable" },
+        { type: "input", name: "descripcion", message: "descripcion del entregable" },
+        { type: "input", name: "fechaLimite", message: "fecha limite" },
+        { type: "input", name: "fechaEntrega", message: "fecha entrega" },
+        { type: "input", name: "estado", message: "escribe el estado del proyecto" },
+      ]);
+
+      const data = {
+        proyectoId: respuestas.proyectoId,
+        titulo: respuestas.titulo,
+        descripcion: respuestas.descripcion,
+        fechaLimite: new Date(respuestas.fechaLimite),
+        fechaEntrega: new Date(fechaEntrega),
+        estado: respuestas.estado
+      };
+  
+      await EntregableService.crearEntregable(data);
+      console.log(chalk.green(`✅ Entregable creado`));
+    }
+
 
     // Obtener proyectos existentes
     const proyectos = await ProyectoService.listarProyectos();
@@ -54,11 +80,11 @@ export async function gestionEntregablesCommand() {
       });
       await inquirer.prompt([
         {
-            type: "input",
-            name: "continuar",
-            message: "Presiona ENTER para volver al menú..."
+          type: "input",
+          name: "continuar",
+          message: "Presiona ENTER para volver al menú..."
         }
-    ]);
+      ]);
       return;
     }
 
@@ -111,6 +137,11 @@ export async function gestionEntregablesCommand() {
         console.log(chalk.red("❌ No se pudo eliminar el entregable."));
       }
     }
+
+    if ( accion === 'historial'){
+      EntregableService.visualizarHistorial(id)
+    }
+
 
   } catch (error) {
     console.error(chalk.red("❌ Error al gestionar entregables:"), error.message);

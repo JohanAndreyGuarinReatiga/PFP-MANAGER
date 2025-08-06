@@ -91,4 +91,40 @@ export class EntregableService {
       .find({ proyectoId: new ObjectId(proyectoId) })
       .toArray()
   }
+
+  static async visualizarHistorial(id){
+    const db = await connection()
+    const session = db.client.startSession()
+    try {
+      await session.withTransaction(async () => {
+        const entregables = db.collection(this.collection)
+        const proyectos = db.collection(this.proyectoCollection)
+
+        const doc = await entregables.findOne({ _id: new ObjectId(id) }, { session })
+        if (!doc) throw new Error("Entregable no encontrado")
+
+
+        const estadosFinales = ["Aprobado", "Rechazado", "Entregado"]
+        if (estadosFinales.includes()) {
+          const entregablesProyecto = await entregables.find({ proyectoId: doc.proyectoId }, { session }).toArray()
+
+          const total = entregablesProyecto.length
+          const completados = entregablesProyecto.filter((e) => ["Aprobado", "Entregado"].includes(e.estado)).length
+
+          const progreso = Math.round((completados / total) * 100)
+
+          await proyectos.updateOne({ _id: doc.proyectoId }, { $set: { progreso } }, { session })
+        }
+      })
+
+      return { success: true  }
+    } catch (error) {
+      await session.abortTransaction()
+      throw new Error("Error : " + error.message)
+    } finally {
+      await session.endSession()
+    }
+
+  }
+
 }
